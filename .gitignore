@@ -10,7 +10,9 @@ __pycache__/
 .DS_Store
 
 # LaTeX build artifacts
-build/
+build/**
+!build/
+!build/main.pdf
 *.aux
 *.log
 *.out
