@@ -1,0 +1,50 @@
+% main.tex (RAIZ)
+\documentclass[aspectratio=169,professionalfonts]{beamer}
+
+\input{theme/preamble.tex}
+\input{theme/macros.tex}
+
+% -------------------------
+% Paths
+% -------------------------
+% Figuras globales y (si luego quisieras) figuras por semana
+\graphicspath{{slides/figs/}{slides/week01/figs/}}
+
+% -------------------------
+% Metadata
+% -------------------------
+\title{Machine Learning — UAQ}
+\subtitle{Presentación}
+\author{Angel Gutiérrez}
+\date{\today}
+
+% (Opcional) logo en portada:
+% \titlegraphic{\includegraphics[height=1.0cm]{logo_uaq.png}}
+
+\begin{document}
+
+% -------------------------
+% Cover (una sola vez)
+% -------------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% -------------------------
+% Table of Contents
+% -------------------------
+\begin{frame}{Contenido}
+  \tableofcontents[currentsection, hideothersubsections]
+\end{frame}
+
+% -------------------------
+% Semana 1
+% -------------------------
+\input{slides/week01/week01_content.tex}
+
+% -------------------------
+% Semana 2
+% -------------------------
+\input{slides/week02/week02_probability_univariate.tex}
+
+\end{document}

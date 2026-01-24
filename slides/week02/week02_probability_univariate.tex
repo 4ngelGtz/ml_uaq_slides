@@ -1,0 +1,525 @@
+% slides/week02_probability_univariate.tex
+% =========================
+% Metadata
+% =========================
+\title[Semana 2: Probabilidad + Bayes]{Semana 2 — Probabilidad (modelos univariados) + Bayes}
+\subtitle{Bayes, Bernoulli/Binomial, Beta, conjugación y Beta–Binomial (posterior + predictiva)}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+%\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 2}
+
+% =========================
+% Helpers (avoid redefinition if provided by theme/macros)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+
+% "Dónde vamos en el temario" helper.
+% Usage: \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+\providecommand{\temariobar}[4]{%
+% (Opción A) Para ahorrar espacio, el bloque actual se indica en el pie
+% usando \insertsectionhead. Este macro se deja como no-op para no tener
+% que borrarlo de todos los frames.
+}
+
+% =========================================================
+% Indicador del bloque actual (Teoría / Lab / Entregable) en el pie
+% =========================================================
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Auto-outline at each section start (shows current block) - Week 2 version
+% This redefines the hook from week01 to show "Semana 2" instead
+\AtBeginSection[]{
+  \begin{frame}{Semana 2 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \hyperlink{sec:teoria}{\textbf{Teoría}}
+    \item \hyperlink{sec:labnumpy}{\textbf{Lab NumPy}}
+    \item \hyperlink{sec:labsklearn}{\textbf{Lab sklearn}}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \hyperlink{sec:entregable}{\textbf{Entregable}}
+  \end{itemize}
+  \end{columns}
+  \end{frame}
+}
+
+% =========================================================
+% PART: WEEK 2 (separates from week 1 in TOC)
+% =========================================================
+\part{Semana 2}
+
+% =========================================================
+% TITLE
+% =========================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% LECTURAS SUGERIDAS
+% =========================================================
+\begin{frame}{Lecturas sugeridas (para estos temas)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Capítulo 2 — Probability: Univariate Models}
+  \begin{itemize}
+    \item \key{2.3} Bayes' rule
+    \item \key{2.4} Bernoulli and binomial distributions
+    \item \key{2.7.4} Beta distribution
+  \end{itemize}
+  \vspace{0.4em}
+  \item \key{Capítulo 4 — Statistics}
+  \begin{itemize}
+    \item \key{4.6.1} Conjugate priors
+    \item \key{4.6.2} The beta-binomial model
+    \item \key{4.6.2.4} Posterior
+    \item \key{4.6.2.9} Posterior predictive
+    \item \key{4.6.2.10} Marginal likelihood
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% TEMARIO MAP (no hours)
+% =========================================================
+\begin{frame}{Temario de la Semana 2 (qué cubrimos hoy)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{columns}[t]
+\column{0.5\textwidth}
+\begin{itemize}
+  \item \hyperlink{sec:teoria}{\textbf{Teoría (PML)}}
+  \begin{itemize}
+    \small
+    \item \key{Teorema de Bayes} y \key{piezas} (\term{prior}, \term{likelihood}, \term{posterior}, \term{evidencia}) \hfill \key{(2.3)}
+    \item \key{Modelos Bernoulli y Binomial} \hfill \key{(2.4)}
+    \item \key{Distribución Beta} (prior sobre probabilidades) \hfill \key{(2.7.4)}
+    \item \key{Conjugación} (por qué Beta es conjugada) \hfill \key{(4.6.1)}
+    \item \key{Modelo Beta--Binomial}: posterior y posterior predictiva \hfill \key{(4.6.2)}
+  \end{itemize}
+
+  \item \hyperlink{sec:labnumpy}{\textbf{Lab NumPy}}
+  \begin{itemize}
+    \small
+    \item \key{Beta--Bernoulli}: posterior (actualización por conteos)
+    \item \key{Posterior predictiva}: 1 ensayo y \(M\) ensayos (simulación)
+  \end{itemize}
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{itemize}
+  \item \hyperlink{sec:labsklearn}{\textbf{Lab sklearn}}
+  \begin{itemize}
+    \small
+    \item \key{Umbral} (\(\tau\)) y reglas de decisión
+    \item \key{Métricas}: Accuracy vs Precision/Recall vs Average Precision
+  \end{itemize}
+  \item \hyperlink{sec:entregable}{\textbf{Entregable}}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% =========================================================
+% OPENER: BAYESIAN VS FREQUENTIST
+% =========================================================
+\begin{frame}{¿Por qué es relevante el enfoque Bayesiano?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Incertidumbre explícita:} obtenemos \(p(\theta\mid D)\), no solo un punto.
+  \item \key{Actualización coherente:} prior + datos \(\Rightarrow\) posterior.
+  \item \key{Predicción robusta:} posterior predictiva reduce sobreconfianza con pocos datos.
+  \item \key{Regularización interpretable:} priors como pseudoconteos.
+  \item \key{Comparación de modelos:} evidencia \(p(D)\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Enfoque frecuentista (ejemplo: tasa de compra)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Datos: \(n=20\), \(k=3\) \(\Rightarrow\) \(\hat\theta=0.15\).
+  \item Estimación: \(\hat\theta=k/n\) (MLE).
+  \item IC 95\% (aprox. normal):
+  \[
+    \hat\theta \pm 1.96\sqrt{\frac{\hat\theta(1-\hat\theta)}{n}}
+    =0.15\pm 0.156\Rightarrow [-0.006,\,0.306]
+  \]
+  \item Intervalo válido en \([0,1]\): \([0,\,0.306]\).
+  \item Interpretación: 95\% de los ICs (en repeticiones) contienen a \(\theta\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Enfoque Bayesiano (mismo ejemplo)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Prior: \(\theta\sim\mathrm{Beta}(2,8)\) (creencia previa \(\approx 0.20\)).
+  \item Posterior: \(\theta\mid D\sim\mathrm{Beta}(5,25)\).
+  \item Media posterior: \(\mathbb{E}[\theta\mid D]=\dfrac{5}{30}\approx 0.167\).
+  \item Intervalo creíble 95\%: percentiles de \(\mathrm{Beta}(5,25)\).
+  \item Interpretación: \(P(\theta\in \text{ICr}\mid D)=0.95\).
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: TEORÍA
+% =========================================================
+\section[Teoría]{Teoría\label{sec:teoria}}
+
+\begin{frame}{Motivación: inferir una probabilidad con pocos datos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Problema base: estimar \(\theta=\Pr(y=1)\) a partir de pocos ensayos Bernoulli.
+  \item Bayes da \key{distribución} sobre \(\theta\), no solo un número.
+  \item Ventaja: incorpora información previa y cuantifica incertidumbre.
+  \item Caso canónico: Bernoulli/Binomial + Beta \(\Rightarrow\) actualizaciones cerradas.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Definiciones (2.3): piezas de Bayes}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Prior:} \(p(\theta)\).
+  \item \key{Likelihood:} \(p(D\mid\theta)\).
+  \item \key{Posterior:} \(p(\theta\mid D)=\dfrac{p(D\mid\theta)\,p(\theta)}{p(D)}\).
+  \item \key{Evidencia:} \(p(D)=\int p(D\mid\theta)\,p(\theta)\,d\theta\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Derivación 1 (2.4): likelihood Bernoulli/Binomial}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Datos iid \(y_i\in\{0,1\}\), con \(k=\sum_{i=1}^n y_i\).
+  \item Bernoulli: \(p(y_i\mid\theta)=\theta^{y_i}(1-\theta)^{1-y_i}\).
+  \item Likelihood agregada:
+  \[
+    p(D\mid\theta)=\prod_{i=1}^n \theta^{y_i}(1-\theta)^{1-y_i}
+    =\theta^{k}(1-\theta)^{n-k}.
+  \]
+  \item Binomial: \(p(k\mid n,\theta)=\binom{n}{k}\theta^{k}(1-\theta)^{n-k}\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Derivación 2 (2.7.4 + 4.6.1): conjugación Beta}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Prior: \(\theta\sim \mathrm{Beta}(\alpha,\beta)\), \(p(\theta)\propto \theta^{\alpha-1}(1-\theta)^{\beta-1}\).
+  \item Posterior (por Bayes):
+  \[
+    p(\theta\mid D)\propto \theta^{k+\alpha-1}(1-\theta)^{n-k+\beta-1}.
+  \]
+  \item Conjugación:
+  \[
+    \theta\mid D\sim \mathrm{Beta}(\alpha+k,\ \beta+n-k).
+  \]
+  \item Lectura: \(\alpha,\beta\) son \key{pseudoconteos} de éxitos/fracasos.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Derivación 3 (4.6.2): evidencia y predictiva}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Evidencia:
+  \[
+    p(D)=\frac{B(\alpha+k,\beta+n-k)}{B(\alpha,\beta)}.
+  \]
+  \item Predictiva 1 paso:
+  \[
+    p(y_{\text{nuevo}}=1\mid D)=\mathbb{E}[\theta\mid D]=\frac{\alpha+k}{\alpha+\beta+n}.
+  \]
+  \item Predictiva de conteos (\(m\) futuros):
+  \[
+    p(k_{\text{new}}\mid m,D)=\binom{m}{k_{\text{new}}}
+    \frac{B(\alpha+k+k_{\text{new}},\beta+n-k+m-k_{\text{new}})}{B(\alpha+k,\beta+n-k)}.
+  \]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo numérico mínimo}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Prior uniforme: \(\theta\sim \mathrm{Beta}(1,1)\).
+  \item Datos: \(n=4\) lanzamientos, \(k=3\) éxitos.
+  \item Posterior: \(\theta\mid D\sim \mathrm{Beta}(4,2)\).
+  \item Predictiva: \(p(y_{\text{nuevo}}=1\mid D)=\dfrac{4}{6}=\dfrac{2}{3}\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Resumen y takeaways}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Bayes (2.3) combina prior y likelihood para obtener el posterior.
+  \item Bernoulli/Binomial (2.4) dan likelihood \(\theta^{k}(1-\theta)^{n-k}\).
+  \item Beta (2.7.4) es prior natural sobre probabilidades.
+  \item Conjugación (4.6.1): \(\mathrm{Beta}(\alpha,\beta)\to \mathrm{Beta}(\alpha+k,\beta+n-k)\).
+  \item Beta–Binomial (4.6.2): evidencia y predictiva cerradas para inferencia y predicción.
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB NUMPY
+% =========================================================
+\section[Lab NumPy]{Lab NumPy\label{sec:labnumpy}}
+
+\begin{frame}{Lab NumPy — objetivo}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+Implementar Beta–Bernoulli de punta a punta:
+\begin{itemize}
+  \item prior \(\rightarrow\) posterior (actualización por conteos)
+  \item posterior \(\rightarrow\) posterior predictiva (1 ensayo y \(M\) ensayos)
+  \item comparación: plug-in vs Bayesiano
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 0: datos y conteos}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+import numpy as np
+
+y = np.array([1,0,1,1,0,1,1,1,0,1])  # ejemplo 0/1
+
+N1 = int(y.sum())
+N0 = int(len(y) - N1)
+print("N1, N0 =", N1, N0)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 1: define el prior Beta($\alpha$,$\beta$)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+alpha, beta = 1.0, 1.0   # uniforme
+# Prueba luego: alpha,beta = 2.0,2.0 o 5.0,5.0
+\end{verbatim}
+\begin{itemize}
+  \item Tip: \(\alpha+\beta\) controla la “fuerza” del prior.
+  \item Pitfall: prior fuerte sin justificar.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 2: posterior Beta($\alpha'$,$\beta'$)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+alpha_post = alpha + N1
+beta_post  = beta  + N0
+
+print("posterior alpha,beta =", alpha_post, beta_post)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 3: posterior predictiva (1 ensayo)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+p1_bayes = alpha_post / (alpha_post + beta_post)
+p0_bayes = 1.0 - p1_bayes
+print("p(y_new=1|D) =", p1_bayes)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 4: predictiva (M ensayos) por simulación}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+M = 20
+R = 50_000
+
+theta = np.random.beta(alpha_post, beta_post, size=R)
+S = np.random.binomial(M, theta)
+
+hist = np.bincount(S, minlength=M+1) / R
+print("sum p(S=0..M) =", hist.sum())
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Paso 5: plug-in vs Bayes}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+# MAP (si alpha_post,beta_post > 1), si no usa media posterior como fallback
+if alpha_post > 1 and beta_post > 1:
+    theta_map = (alpha_post - 1) / (alpha_post + beta_post - 2)
+else:
+    theta_map = alpha_post / (alpha_post + beta_post)
+
+R = 50_000
+S_plugin = np.random.binomial(M, theta_map, size=R)
+hist_plugin = np.bincount(S_plugin, minlength=M+1) / R
+\end{verbatim}
+\begin{itemize}
+  \item Qué comparar: varianza (dispersión) y colas (sobreconfianza).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — checklist}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+Tu notebook debe incluir:
+\begin{itemize}
+  \item \((\alpha,\beta)\), \((\alpha',\beta')\), \(N_1,N_0\)
+  \item \(p(y_{\text{nuevo}}=1\mid D)\)
+  \item aproximación de \(p(S\mid D)\) para algún \(M\)
+  \item comparación plug-in vs Bayes (figura o estadísticos)
+  \item 2–3 frases: efecto de cambiar el prior (sesgo y fuerza)
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB SKLEARN
+% =========================================================
+\section[Lab sklearn]{Lab sklearn\label{sec:labsklearn}}
+
+\begin{frame}{Lab sklearn — objetivo}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+En un problema binario:
+\begin{itemize}
+  \item entrenar un modelo que produzca \(\hat p\)
+  \item barrer umbrales \(\tau\) y ver trade-offs
+  \item comparar accuracy vs precision/recall vs average precision
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab sklearn — Paso 1: modelo con probabilidades}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{verbatim}
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+# X, y: tus datos (numpy arrays)
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=0)
+
+clf = LogisticRegression(max_iter=1000)
+clf.fit(Xtr, ytr)
+
+p_hat = clf.predict_proba(Xte)[:, 1]  # scores en [0,1]
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab sklearn — Paso 2: umbral y conteos TP/FP/TN/FN}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{verbatim}
+def yhat_from_tau(p, tau):
+    return (p >= tau).astype(int)
+
+tau = 0.5
+yhat = yhat_from_tau(p_hat, tau)
+
+TP = int(((yhat==1) & (yte==1)).sum())
+FP = int(((yhat==1) & (yte==0)).sum())
+TN = int(((yhat==0) & (yte==0)).sum())
+FN = int(((yhat==0) & (yte==1)).sum())
+print(TP, FP, TN, FN)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Lab sklearn — Paso 3: métricas por umbral}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{verbatim}
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+
+taus = np.linspace(0.0, 1.0, 101)
+rows = []
+for tau in taus:
+    yhat = (p_hat >= tau).astype(int)
+    acc = accuracy_score(yte, yhat)
+    prec = precision_score(yte, yhat, zero_division=0)
+    rec  = recall_score(yte, yhat, zero_division=0)
+    rows.append([tau, acc, prec, rec])
+
+rows = np.array(rows)
+best_tau_acc = rows[rows[:,1].argmax(), 0]
+print("best tau (accuracy):", best_tau_acc)
+\end{verbatim}
+\begin{itemize}
+  \item Pitfall: escoger \(\tau\) usando el test (se elige con validación).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab sklearn — Paso 4: Average Precision (AP) y curva PR}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{verbatim}
+from sklearn.metrics import average_precision_score, precision_recall_curve
+
+ap = average_precision_score(yte, p_hat)
+prec, rec, thr = precision_recall_curve(yte, p_hat)
+
+print("Average Precision =", ap)
+# (Opcional) graficar: rec (x) vs prec (y)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Lab sklearn — preguntas guía}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{itemize}
+  \item ¿Qué pasa con precision y recall cuando subes \(\tau\)?
+  \item ¿Por qué accuracy puede ser engañosa con desbalance?
+  \item ¿Qué te dice AP que no te dice un umbral fijo?
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: ENTREGABLE
+% =========================================================
+\section[Entregable]{Entregable\label{sec:entregable}}
+
+\begin{frame}{Entregable (Semana 2)}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+
+Subir al repo:
+\begin{itemize}
+  \item \key{Notebook 1 (NumPy):} Beta–Bernoulli posterior + posterior predictiva (1 y \(M\)).
+  \item \key{Notebook 2 (sklearn):} umbrales + tabla de métricas + AP (y opcional curva PR).
+  \item \key{README corto:} cómo correr, qué aprendiste (5–8 líneas) y una figura/tabla destacada.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Checklist de entrega (formato)}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+
+\begin{itemize}
+  \item Carpeta: \texttt{week02/}
+  \item Nombres: \texttt{week02\_beta\_bernoulli.ipynb}, \texttt{week02\_thresholding\_metrics.ipynb}
+  \item Celdas limpias (sin outputs gigantes) y semilla fija donde aplique.
+  \item Commits pequeños con mensajes claros.
+  \item Reproducible: \texttt{requirements.txt} o \texttt{environment.yml} (si ya lo estamos usando).
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% CIERRE
+% =========================================================
+\begin{frame}{Cierre}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{itemize}
+  \item Bayes = prior \(\times\) likelihood \(\rightarrow\) posterior (actualización).
+  \item Conjugación = actualizaciones simples (conteos \(\rightarrow\) parámetros).
+  \item Predicción Bayesiana integra incertidumbre \(\Rightarrow\) menos sobreconfianza.
+  \item En clasificación: el score no es la decisión; la decisión depende del umbral y del objetivo.
+\end{itemize}
+\end{frame}

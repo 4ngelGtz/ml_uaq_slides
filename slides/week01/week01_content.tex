@@ -1,0 +1,793 @@
+% =========================
+% Metadata
+% =========================
+\title[Semana 1: Intro + Workflow]{Semana 1 — Introducción + workflow de Machine Learning}
+\subtitle{Framing, generalización, overfitting, leakage, baselines y métricas (Accuracy + PR/PR-AUC)}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 1}
+
+% =========================
+% Helpers (avoid redefinition if provided by theme/macros)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+
+% "Dónde vamos en el temario" helper.
+% Usage: \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+\newcommand{\temariobar}[4]{%
+% (Opción A) Para ahorrar espacio, el bloque actual se indica en el pie
+% usando \insertsectionhead. Este macro se deja como no-op para no tener
+% que borrarlo de todos los frames.
+}
+
+% =========================================================
+% Indicador del bloque actual (Teoría / Lab / Entregable) en el pie
+% =========================================================
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Auto-outline at each section start (shows current block)
+\AtBeginSection[]{
+  \begin{frame}{Semana 1 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \tableofcontents[currentsection, hideothersubsections]
+  \end{frame}
+}
+
+% =========================================================
+% TITLE
+% =========================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% TEMARIO MAP (no hours)
+% =========================================================
+\begin{frame}{Temario de la Semana 1 (qué cubrimos hoy)}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{enumerate}
+  \item \key{Arranque y framing:} dataset $\rightarrow$ modelo $\rightarrow$ predicción $\rightarrow$ decisión
+  \item \key{Teoría (slides):}
+    \begin{itemize}
+      \item Problem framing (qué es $X$, qué es $y$, unidad de predicción)
+      \item Generalización y overfitting
+      \item Leakage (conceptual + ejemplos)
+      \item Baselines
+      \item Métricas: Accuracy + Precision/Recall + PR-AUC
+    \end{itemize}
+  \item \key{Lab NumPy:} split + baseline + accuracy + PR básico (+ mini-leakage)
+  \item \key{Lab sklearn:} Pipeline + cross\_val\_score + PR-AUC
+  \item \key{Entregable:} repo + notebook plantilla + checklist reproducible
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+% LECTURAS SUGERIDAS (PML = libro base)
+% =========================================================
+\begin{frame}{Lecturas sugeridas (PML = libro base) — Semana 1}
+
+
+\begin{block}{Lectura previa (fundamentos para la sesión)}
+\begin{itemize}
+  \item \key{Cap. 1 — Introduction}
+  \begin{itemize}
+    \item ¿Qué es ML? (definición tipo T/P/E) y \term{supervised learning}
+    \item \term{Generalization} y \term{overfitting} (por qué separar train/test)
+  \end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{block}{Lectura mínima para métricas (lo que usaremos hoy)}
+\begin{itemize}
+  \item \key{Cap. 5 — Decision theory}
+  \begin{itemize}
+    \item \term{Precision}, \term{Recall}, \term{Precision--Recall curve}
+    \item \term{Average Precision} (PR-AUC) como resumen
+  \end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{block}{Lectura posterior (para consolidar evaluación honesta)}
+\begin{itemize}
+  \item \key{Cap. 4 — Statistics}
+  \begin{itemize}
+    \item \term{Validation set} y selección de hiperparámetros
+    \item \term{Cross-validation} (K-fold): por qué reduce varianza con $N$ pequeño
+  \end{itemize}
+\end{itemize}
+\end{block}
+
+\small
+\key{Tip:} lee buscando responder: \emph{¿cómo evito engañarme al evaluar un modelo?}
+\end{frame}
+
+
+% =========================================================
+% ARRANQUE Y FRAMING (short)
+% =========================================================
+\section[Arranque]{Arranque y framing}
+
+\begin{frame}{¿Qué es “aprender” en ML? (visión de extremo a extremo)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{itemize}
+  \item \key{Dataset} (observaciones): pares $(x_i, y_i)$
+  \item \key{Modelo} $f_\theta$: transforma $x$ en una predicción $\hat{y}$
+  \item \key{Métrica}: mide qué tan bien predice (Acc, AP/PR-AUC)
+  \item \key{Decisión}: usar $\hat{y}$ o un score para actuar (aprobar, clasificar, alertar, etc.)
+\end{itemize}
+
+\begin{block}{Idea central del curso}
+El objetivo real no es “ganar en train”; es \key{generalizar} con evaluación honesta y reproducible.
+\end{block}
+\end{frame}
+
+% =========================================================
+% TEORÍA
+% =========================================================
+\section[Teoría]{Teoría: workflow de ML}
+\subsection{Problem framing}
+
+\begin{frame}{Problem framing: qué debes definir antes de entrenar}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{itemize}
+  \item \key{Unidad de predicción:} ¿qué entidad scoreas? (persona, cliente, imagen, transacción)
+  \item \key{Features $X$:} información disponible \textbf{al momento de predecir}
+  \item \key{Target $y$:} definición operacional (evento + ventana + etiqueta)
+  \item \key{Salida del modelo:} clase (0/1), probabilidad, score continuo
+  \item \key{Métrica:} qué significa “éxito” (accuracy, AP, etc.)
+\end{itemize}
+
+\begin{block}{Pregunta guía}
+\key{¿Qué decisión cambia si tengo este score/predicción?}
+\end{block}
+\end{frame}
+
+\begin{frame}{Supervised vs unsupervised vs RL (solo para ubicar)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{columns}[T,onlytextwidth]
+\column{0.5\textwidth}
+\begin{block}{\key{Supervised}}
+\begin{itemize}
+  \item Tienes etiquetas $y$
+  \item Objetivo: predecir $y$ desde $x$
+  \item Ej: spam, precio de casa
+\end{itemize}
+\end{block}
+
+\begin{block}{\key{Unsupervised}}
+\begin{itemize}
+  \item No hay $y$
+  \item Objetivo: estructura/representaciones
+  \item Ej: clustering, PCA
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{\key{Reinforcement Learning}}
+\begin{itemize}
+  \item Aprendes por recompensa acumulada
+  \item Interacción agente–entorno
+  \item Ej: control, juegos
+\end{itemize}
+\end{block}
+
+\begin{block}{Hoy}
+Nos enfocamos en \key{supervised} (clasificación binaria) + evaluación.
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Supervised learning: esquema visual (para fijar ideas)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\centering
+\includegraphics[width=0.95\linewidth]{supervised_schematic.png}
+\vspace{0.3em}
+
+\small
+\begin{itemize}
+  \item Entrenamiento: ajustar $\theta$ para mejorar una pérdida/métrica en train.
+  \item Evaluación: medir en datos \textbf{no usados} para ajustar el modelo.
+\end{itemize}
+\end{frame}
+
+\subsection{Generalización y overfitting}
+
+\begin{frame}{Generalización: el objetivo real}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{itemize}
+  \item Queremos buen desempeño en datos nuevos (out-of-sample).
+  \item Por eso separamos datos: train / validation / test.
+\end{itemize}
+
+\begin{block}{Intuición}
+\key{Train performance} es “qué tan bien memoriza”. \\
+\key{Test performance} es “qué tan bien generaliza”.
+\end{block}
+\end{frame}
+
+\begin{frame}{Overfitting: definición + señal práctica}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\key{Overfitting} = el modelo se ajusta demasiado a peculiaridades/ruido del train:
+\begin{itemize}
+  \item train muy bien, test/val notablemente peor
+  \item “se derrumba” al salir del dataset de entrenamiento
+\end{itemize}
+
+\begin{block}{Generalization gap}
+Diferencia entre el desempeño en train y en val/test.
+\end{block}
+\end{frame}
+
+\begin{frame}{Overfitting visual (intuición con modelos de distinta complejidad)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\centering
+\includegraphics[width=0.95\linewidth]{overfitting_polyfits.png}
+\vspace{0.3em}
+
+\small
+\begin{itemize}
+  \item Modelo simple: puede sub-ajustar (\term{underfit})
+  \item Modelo muy flexible: puede memorizar train y fallar en test
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Complejidad vs error (por qué el test error es “U-shaped”)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\centering
+\includegraphics[width=0.95\linewidth,height=0.62\textheight,keepaspectratio]{error_vs_degree.png}
+\vspace{0.25em}
+
+\begin{minipage}{0.95\linewidth}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0.2em}
+  \item El \key{train error} suele bajar con complejidad.
+  \item El \key{test error} suele tener un mínimo: demasiada complejidad vuelve a empeorar.
+\end{itemize}
+\end{minipage}
+\end{frame}
+
+\subsection{Fuga de información (leakage)}
+
+\begin{frame}{Fuga de información: por qué las métricas pueden mentir}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{block}{Pregunta guía}
+¿Por qué mi métrica (accuracy / AP) es alta en el cuaderno y cae en producción?
+\end{block}
+
+\vspace{0.3em}
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item \key{Objetivo}: estimar desempeño fuera de muestra (generalización).
+  \item \key{Problema}: si el proceso “ve” datos del futuro, la evaluación es optimista.
+  \item \key{Consecuencia}: eliges mal el modelo / umbral \(\Rightarrow\) mal despliegue.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Definición operativa (en el flujo train/val/test)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{itemize}\setlength{\itemsep}{0.4em}
+  \item Partición: \(\mathcal{D}=\mathcal{D}_{\text{train}}\cup\mathcal{D}_{\text{val}}\cup\mathcal{D}_{\text{test}}\) (disjuntos).
+  \item En el pipeline “se aprenden”:
+  \[
+  \theta\ (\text{modelo}),\qquad \phi\ (\text{transformaciones}),\qquad \lambda\ (\text{regularización}),\qquad t\ (\text{umbral}).
+  \]
+\end{itemize}
+
+\begin{block}{Fuga de información}
+Ocurre si \(\mathcal{D}_{\text{val/test}}\) influye (directa o indirectamente) en \(\theta,\phi,\lambda,t\).
+\end{block}
+
+\begin{block}{Regla de oro}
+\key{Todo ajuste (\texttt{fit}) se hace solo con \(\mathcal{D}_{\text{train}}\) (o dentro de cada pliegue).}
+\end{block}
+\end{frame}
+
+\begin{frame}{Idea clave 1: cuándo el test estima el riesgo (sin sesgo)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item Riesgo (pérdida \(\ell\)): \(\;R(f)=\mathbb{E}[\ell(y,f(x))]\).
+  \item Estimador en test:
+  \[
+  \widehat{R}_{\text{test}}(f)=\frac{1}{n_{\text{test}}}\sum_{(x,y)\in\mathcal{D}_{\text{test}}}\ell\!\left(y,f(x)\right).
+  \]
+\end{itemize}
+
+\begin{block}{Condición crítica}
+\(\widehat{R}_{\text{test}}(f)\) es una evaluación honesta si \(f\) es \key{independiente} de \(\mathcal{D}_{\text{test}}\).
+\end{block}
+
+\begin{itemize}\setlength{\itemsep}{0.25em}
+  \item Si el test se usa para decidir \(f\) (modelo/umbral/variables), se rompe la independencia.
+  \item \(\Rightarrow\) la métrica en test se vuelve \key{optimista} (sesgo).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Idea clave 2: sesgo por selección (mirar test para elegir)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0.25em}
+  \item Si usas \(\mathcal{D}_{\text{test}}\) para elegir entre \(m\) opciones, el “ganador” suele ganar por \key{suerte}.
+  \item Test finito: \(\widehat{R}_{\text{test}}(f_j)=R(f_j)+\varepsilon_j\) (ruido de muestreo).
+  \item Elegir por el mínimo introduce optimismo:
+  \[
+  \widehat{R}_{\text{test}}(f_{j^\star})=\min_j \{R(f_j)+\varepsilon_j\}\;\;\text{(tiende a ser menor que }\min_j R(f_j)\text{)}.
+  \]
+\end{itemize}
+
+\vspace{-0.1em}
+\centering
+\includegraphics[width=0.92\linewidth,height=0.50\textheight,keepaspectratio]{selection_bias.png}
+\vspace{-0.2em}
+\end{frame}
+
+\begin{frame}{Idea clave 2 (continuación): cómo evitar el sesgo por selección}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{block}{Regla práctica}
+\key{El test es para auditar, no para decidir.}
+\end{block}
+
+\vspace{0.2em}
+\begin{itemize}\setlength{\itemsep}{0.5em}
+  \item Decide con \(\mathcal{D}_{\text{val}}\) o validación cruzada:
+  \[
+  \text{modelo},\ \lambda,\ \text{variables},\ t\ (\text{umbral}).
+  \]
+  \item Usa \(\mathcal{D}_{\text{test}}\) \key{una sola vez} al final (sin “volver a mover perillas”).
+  \item Si ajustaste algo tras ver test, entonces ese test ya no es honesto \(\Rightarrow\) necesitas un \key{nuevo test}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Idea clave 3: fuga por preprocesamiento (por qué el pipeline importa)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item Transformación: \(z=T_{\phi}(x)\). \key{Primero} se ajusta \(\phi\) en \(\mathcal{D}_{\text{train}}\).
+  \[
+  \phi\leftarrow \mathrm{fit}(T,\mathcal{D}_{\text{train}})\qquad\Rightarrow\qquad
+  \theta\leftarrow \arg\min_\theta \widehat{R}_{\text{train}}(\theta\mid \phi).
+  \]
+  \item Fuga: \(\phi\leftarrow \mathrm{fit}(T,\mathcal{D}_{\text{train}}\cup\mathcal{D}_{\text{test}})\).
+\end{itemize}
+
+\vspace{-0.5em}
+\begin{center}
+\includegraphics[width=0.82\linewidth,height=0.52\textheight,keepaspectratio]{leakage_scaling.png}
+\end{center}
+\vspace{-0.6em}
+\end{frame}
+
+\begin{frame}{Ejemplo numérico mínimo: “elegí el mejor en test”}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{block}{Mismo mundo, test finito}
+Supón que (en realidad) \(R(f_A)=R(f_B)=R(f_C)=0.30\).
+\end{block}
+
+\vspace{-0.2em}
+\[
+\widehat{R}_{\text{test}}(f_A)=0.28,\quad
+\widehat{R}_{\text{test}}(f_B)=0.24,\quad
+\widehat{R}_{\text{test}}(f_C)=0.27
+\]
+
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item Si eliges y reportas \(f_B\) por tener 0.24, ya usaste el test para decidir.
+  \item En un test nuevo, el rendimiento típico “regresa” cerca de 0.30.
+  \item Solución: decide con \(\mathcal{D}_{\text{val}}\) (o validación cruzada) y \key{audita} con \(\mathcal{D}_{\text{test}}\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Checklist: 3 patrones típicos de fuga de información}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{enumerate}\setlength{\itemsep}{0.5em}
+  \item \key{Preprocesamiento}: ajustar transformaciones con todo el dataset
+  \(\Rightarrow\) \(\phi\) debe salir solo de \(\mathcal{D}_{\text{train}}\) (o por pliegue).
+  \item \key{Variable objetivo}: variables que “usan el futuro” o derivadas del desenlace
+  \(\Rightarrow\) la variable debe existir al momento de la decisión.
+  \item \key{Partición}: duplicados / mismo cliente-paciente en train y test / partición temporal incorrecta
+  \(\Rightarrow\) split por grupo o por tiempo cuando corresponda.
+\end{enumerate}
+
+\vspace{0.4em}
+\key{Señal de alarma:} métrica “demasiado buena” \(\,+\) caída fuerte al desplegar.
+\end{frame}
+
+\begin{frame}{Resumen: reglas prácticas (para no auto-engañarnos)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{itemize}\setlength{\itemsep}{0.5em}
+  \item \key{Test} se usa para \key{auditar} (una vez), no para elegir.
+  \item \key{Validación / validación cruzada} se usa para decidir \(\lambda\), variables y umbral \(t\).
+  \item Todo \texttt{fit} (modelo y preprocesamiento) vive dentro de train (o dentro del pliegue).
+  \item La partición respeta estructura del dato: tiempo, grupos, duplicados.
+\end{itemize}
+
+\begin{block}{Takeaway}
+Una métrica solo es creíble si el experimento imita el uso real del modelo.
+\end{block}
+\end{frame}
+
+\subsection{Modelos de referencia}
+
+\begin{frame}{Modelo de referencia: definición + por qué es obligatorio}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\key{Modelo de referencia} = modelo simple que establece un “piso” de desempeño.
+\begin{itemize}
+  \item \key{Referencia ingenua:} clase mayoritaria (predictor constante)
+  \item \key{Referencia fuerte:} modelo lineal simple (regresión logística)
+\end{itemize}
+
+\begin{block}{Disciplina}
+No celebramos un modelo si no supera una referencia razonable.
+\end{block}
+\end{frame}
+
+\subsection{Métricas}
+
+\begin{frame}{Métricas (clasificación binaria): matriz de confusión}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{c|cc}
+ & \(\hat{y}=1\) & \(\hat{y}=0\)\\ \hline
+\(y=1\) & \(TP\) & \(FN\)\\
+\(y=0\) & \(FP\) & \(TN\)\\
+\end{tabular}
+\end{center}
+
+\vspace{0.2em}
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item \(TP\): positivos detectados \quad \(FN\): positivos perdidos
+  \item \(FP\): falsas alarmas \quad \(TN\): negativos correctos
+\end{itemize}
+
+\begin{block}{Idea}
+Todas las métricas de clasificación se construyen con \(TP,FP,FN,TN\).
+\end{block}
+\end{frame}
+
+\begin{frame}{Precisión / Cobertura (recall): definiciones e intuición}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\begin{itemize}
+  \item \key{Precisión} (pureza):
+  \[
+  \mathrm{Prec}=\frac{TP}{TP+FP}
+  \]
+  \item \key{Cobertura} (recall):
+  \[
+  \mathrm{Rec}=\frac{TP}{TP+FN}
+  \]
+\end{itemize}
+
+\begin{block}{Compromiso (umbral)}
+Al mover el umbral \(t\), cambian \(TP,FP,FN\) \(\Rightarrow\) cambia (precisión, cobertura).
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo mínimo: misma exactitud, comportamiento distinto}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\small
+\begin{block}{Dataset desbalanceado}
+\(N=100\): 10 positivos, 90 negativos.
+\end{block}
+
+\vspace{-0.4em}
+\begin{columns}[t]
+\column{0.48\textwidth}
+\begin{block}{Modelo A (ingenuo): \(\hat{y}=0\) siempre}
+\[
+TP=0,\; FN=10,\; FP=0,\; TN=90
+\]
+\[
+\mathrm{Acc}=0.90,\qquad \mathrm{Rec}=0
+\]
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{Modelo B: detecta algunos positivos}
+\[
+TP=6,\; FN=4,\; FP=6,\; TN=84
+\]
+\[
+\mathrm{Acc}=0.90,\quad \mathrm{Prec}=0.50,\quad \mathrm{Rec}=0.60
+\]
+\end{block}
+\end{columns}
+
+\begin{block}{Mensaje}
+La \key{exactitud} puede ocultar fallas en la clase positiva \(\Rightarrow\) usamos precisión/recall y curva PR.
+\end{block}
+\end{frame}
+
+\begin{frame}{Exactitud (accuracy): cuándo sirve y cuándo engaña}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\key{Exactitud (accuracy)}:
+\[
+\mathrm{Acc}=\frac{TP+TN}{TP+TN+FP+FN}.
+\]
+
+\begin{itemize}
+  \item Útil si las clases están balanceadas y los costos de error son similares.
+  \item Puede engañar con desbalance: puedes tener alta exactitud sin detectar positivos.
+\end{itemize}
+
+\begin{block}{Ejemplo mental}
+Si 5\% son positivos, predecir siempre 0 da 95\% exactitud (pero 0 recall).
+\end{block}
+\end{frame}
+
+\begin{frame}{Curva Precisión--Recall y AP}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\footnotesize
+\begin{columns}[T,onlytextwidth]
+\column{0.50\textwidth}
+\vspace{0pt}
+\begin{itemize}\setlength{\itemsep}{0.25em}
+  \item Curva PR: puntos \((\mathrm{Recall}(t),\mathrm{Prec}(t))\) al variar el umbral \(t\).
+  \item Se usa cuando hay \key{desbalance} y nos importa la \key{clase positiva}.
+  \item Línea base: un clasificador no-informativo tiene \(\mathrm{Prec}\approx \pi\), con \(\pi=P(y=1)\).
+  \item \key{AP} (Average Precision): resumen escalar tipo “área” bajo la curva PR.
+\end{itemize}
+
+\vspace{0.15em}
+\begin{block}{Uso práctico}
+Elegir \(t\) según una meta: recall mínimo o precisión mínima.
+\end{block}
+
+\column{0.50\textwidth}
+\vspace{0pt}
+\centering
+\includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{pr_curve.png}
+\end{columns}
+\end{frame}
+
+% =========================================================
+% LAB 1 — NUMPY
+% =========================================================
+\section[Lab NumPy]{Lab NumPy: baseline + split + métricas}
+
+\begin{frame}{Lab NumPy — objetivo}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\key{Contexto:} en teoría vimos \key{generalización}, \key{fuga de información},
+\key{modelos de referencia} y \key{métricas} (precisión/recall, exactitud, PR/AP).
+
+\vspace{0.4em}
+\key{Objetivo del lab:} construir ese workflow \textbf{sin librerías “mágicas”},
+para entender qué se calcula y cuándo aparece la fuga.
+
+\vspace{0.3em}
+\key{Al final debes poder:}
+\begin{itemize}\setlength{\itemsep}{0.25em}
+  \item generar un dataset binario sintético \((X,y)\)
+  \item hacer un split reproducible train/val/test
+  \item comparar referencia ingenua vs un modelo con \key{score} + umbral
+  \item medir exactitud, precisión, recall y ver el efecto del umbral
+  \item reproducir una fuga por preprocesamiento (estandarizar “mal” vs “bien”)
+\end{itemize}
+
+\small
+Archivo: \texttt{labs/week01\_numpy\_baseline.ipynb}
+\end{frame}
+
+\begin{frame}{Lab NumPy — pasos (lo que deben implementar)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\footnotesize
+\begin{enumerate}\setlength{\itemsep}{0.22em}
+  \item \key{Datos (reproducible):} genera \(X\in\mathbb{R}^{n\times 2}\), \(y\in\{0,1\}\) (dos nubes / dos gaussianas) y grafica por clase.
+  \item \key{Split (sin fuga):} `rng.permutation` + cortes 60/20/20 en train/val/test (verifica tamaños y proporción de positivos).
+  \item \key{Referencia ingenua:} predice la clase mayoritaria (decidida con train) y reporta \key{exactitud} en val y test.
+  \item \key{Score + umbral:} define un score simple \(s(x)\) y predice \(\hat y=\mathbb{1}[s(x)\ge t]\).
+  \item \key{Barrido de umbral (clave):} evalúa varios \(t\) y arma una tabla en val con: \(t\), exactitud, precisión, recall.
+  \item \key{Curva PR básica:} con el barrido, grafica puntos (recall, precisión) y elige \(t\) según una meta (p. ej. recall mínimo).
+  \item \key{Mini-fuga:} estandariza “con todo” vs “solo train” y compara cómo cambian métricas/curva; explica en 2–3 líneas por qué eso es fuga.
+\end{enumerate}
+
+\vspace{0.25em}
+\key{Output esperado:} tabla de umbrales + gráfica PR + comentario corto (elección de \(t\) y nota sobre fuga).
+\end{frame}
+
+% =========================================================
+% (Optional) Break slide
+% =========================================================
+\begin{frame}{Pausa}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+
+\Large\centering
+Pausa breve \\
+\vspace{0.4em}
+\normalsize
+Al volver: \key{Pipeline + cross-validation + PR-AUC}
+\end{frame}
+
+% =========================================================
+% LAB 2 — SKLEARN
+% =========================================================
+\section[Lab sklearn]{Lab sklearn: Pipeline + CV + PR-AUC}
+
+\begin{frame}{Lab sklearn — objetivo}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\footnotesize
+\vspace{0.3em}
+\key{Objetivo del lab:} implementar un pipeline reproducible en \texttt{sklearn} que:
+\begin{itemize}\setlength{\itemsep}{0.25em}
+  \item encapsule el preprocesamiento (evitar fuga),
+  \item evalúe de forma estable (validación cruzada),
+  \item y reporte métricas adecuadas (accuracy y AP / PR-AUC).
+\end{itemize}
+
+\vspace{0.2em}
+\key{Al final debes poder:}
+\begin{itemize}\setlength{\itemsep}{0.15em}
+  \item construir \texttt{Pipeline(StandardScaler, LogisticRegression)}
+  \item evaluar con \texttt{cross\_val\_score} usando:
+  \begin{itemize}\setlength{\itemsep}{0.1em}
+    \item \texttt{scoring="accuracy"}
+    \item \texttt{scoring="average\_precision"} (AP / PR-AUC)
+  \end{itemize}
+  \item entrenar en train y auditar en test con:
+  \begin{itemize}\setlength{\itemsep}{0.1em}
+    \item \texttt{precision\_recall\_curve}
+    \item \texttt{average\_precision\_score}
+  \end{itemize}
+\end{itemize}
+
+\vspace{0.1em}
+\key{Regla práctica:} decisiones con validación/CV; test solo auditoría final.
+
+\vspace{0.1em}
+\key{Archivo:} \texttt{labs/week01\_sklearn\_pipeline\_cv.ipynb}
+\end{frame}
+
+\begin{frame}{¿Qué es cross-validation (CV) y para qué sirve?}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item \key{Definición:} dividir \(\mathcal{D}_{\text{trainval}}\) en \(K\) pliegues; repetir \(K\) veces:
+  entrenar en \(K-1\) y validar en 1; promediar la métrica.
+  \item \key{Pasos (en práctica):}
+  \begin{itemize}\setlength{\itemsep}{0.2em}
+    \item partir \(\mathcal{D}_{\text{trainval}}\) en folds \(F_1,\dots,F_K\)
+    \item para \(k=1,\dots,K\): \texttt{fit} en \(\mathcal{D}_{\text{trainval}}\setminus F_k\), evaluar en \(F_k\)
+    \item promediar (y reportar variabilidad) de la métrica
+    \item si hay hiperparámetros (\(\lambda, C\)): elegir el que maximiza el promedio en CV
+  \end{itemize}
+  \item \key{Sirve para:} estimar desempeño con menor varianza y \key{seleccionar} modelo/hiperparámetros (p. ej. \(\lambda\), \(C\)).
+  \item \key{No reemplaza al test:} el test se guarda para \key{auditar una sola vez} al final.
+  \item \key{Cuidado con fuga:} el \texttt{Pipeline} asegura que cada pliegue haga \texttt{fit} del preprocesamiento solo con su train.
+\end{itemize}
+
+\begin{block}{Regla práctica}
+Decisiones con CV; test solo auditoría final.
+\end{block}
+\end{frame}
+
+\begin{frame}{¿Por qué cross-validation ayuda? (intuición)}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\footnotesize
+\begin{columns}[T,onlytextwidth]
+\column{0.56\textwidth}
+\begin{itemize}\setlength{\itemsep}{0.35em}
+  \item Con pocos datos, un solo split (train/val) puede dar una métrica \key{muy variable}.
+  \item K-fold CV promedia el rendimiento sobre \(K\) particiones \(\Rightarrow\) estimación más \key{estable}.
+  \item Para selección de modelo/hiperparámetros: elegir el que maximiza la métrica promedio en CV.
+  \item El \key{test} queda fuera: sirve para auditar el sistema final (sin volver a ajustar).
+\end{itemize}
+
+\column{0.44\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[
+  width=\linewidth,
+  height=0.56\textheight,
+  keepaspectratio,
+  trim=0cm 1.1cm 0cm 0.9cm,
+  clip
+]{kfold_schematic.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Discusión guiada (al final del lab)}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+
+\begin{block}{Preguntas}
+\begin{itemize}
+  \item ¿Cuándo usarías accuracy y cuándo AP/PR-AUC?
+  \item Si hay desbalance, ¿qué te dice AP que no te dice accuracy?
+  \item ¿Qué evita Pipeline que es fácil “romper” si haces preprocessing a mano?
+\end{itemize}
+\end{block}
+\end{frame}
+
+% =========================================================
+% CIERRE + ENTREGABLE
+% =========================================================
+\section[Entregable]{Cierre y entregable}
+
+\begin{frame}{Checklist final (lo que debe quedar bien hoy)}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+
+\begin{enumerate}
+  \item Split correcto (sin contaminar test)
+  \item Baseline reportado (y comparado)
+  \item Métrica correcta (accuracy + PR/AP)
+  \item Evitar leakage (Pipeline / fit solo en train)
+  \item Reproducibilidad (semilla + requirements + README)
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Entregable: repo + notebook plantilla}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+
+\begin{itemize}
+  \item Estructura mínima:
+  \begin{itemize}
+    \item \texttt{slides/week01\_intro\_workflow.tex}
+    \item \texttt{slides/figs/*.png} (figuras generadas)
+    \item \texttt{labs/week01\_numpy\_baseline.ipynb}
+    \item \texttt{labs/week01\_sklearn\_pipeline\_cv.ipynb}
+    \item \texttt{README.md} + \texttt{requirements.txt} (o \texttt{environment.yml})
+  \end{itemize}
+  \item Evidencia mínima:
+  \begin{itemize}
+    \item tabla baseline vs logistic (Accuracy + AP)
+    \item PR curve (imagen) + interpretación (5--6 líneas)
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre: 3 ideas para llevarte}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+
+\begin{enumerate}
+  \item \key{Generalización} es el objetivo; train perfecto no impresiona.
+  \item \key{Leakage} es el enemigo silencioso; \key{Pipeline} es tu escudo.
+  \item \key{Baselines + métricas correctas} te mantienen honesto.
+\end{enumerate}
+\end{frame}

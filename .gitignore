@@ -1,0 +1,33 @@
+# Python virtual env and caches
+.venv/
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS/editor
+.DS_Store
+
+# LaTeX build artifacts
+build/
+*.aux
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.lof
+*.lot
+
+# Lab outputs (keep placeholder)
+labs/**/outputs/*
+!labs/**/outputs/.gitkeep
+
+# Local PDFs
+/book1.pdf

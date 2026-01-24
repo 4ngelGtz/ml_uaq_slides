@@ -1,0 +1,251 @@
+% slides/modules/decision_theory_metrics.tex
+% Cap. 5 (extracto) — Decision Theory: lo esencial para métricas
+
+% -------------------- Slide: Section title --------------------
+\section{Decision Theory para métricas}
+
+% -------------------- Slide 1 --------------------
+\begin{frame}{Motivación: de creencias a decisiones}
+\begin{itemize}
+  \item La inferencia Bayesiana actualiza creencias: \(\;p(H\mid x)\).
+  \item Pero al final necesitamos una \textbf{acción} \(a \in \mathcal{A}\) (ej.\ diagnosticar, aprobar crédito, detectar fraude).
+  \item La \textbf{función de pérdida} \(\ell(h,a)\) cuantifica el costo de tomar \(a\) cuando el estado real es \(h\).
+  \item \textbf{Idea clave:} elegir la acción que minimiza la pérdida esperada bajo el posterior.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 2 --------------------
+\begin{frame}{5.1.1 Basics: riesgo (pérdida esperada) y regla óptima}
+\textbf{Riesgo posterior (pérdida esperada):}
+\[
+\Risk(a\mid x) \;\triangleq\; \E_{p(h\mid x)}[\ell(h,a)]
+\;=\;\sum_{h\in \mathcal{H}} \ell(h,a)\,p(h\mid x)
+\]
+
+\textbf{Política óptima (regla de decisión Bayesiana):}
+\[
+\pi^*(x) \;=\;\argmin_{a\in \mathcal{A}} \Risk(a\mid x)
+\]
+
+\textbf{Equivalente en utilidad:} si \(U(h,a)=-\ell(h,a)\),
+\[
+\pi^*(x) \;=\;\argmax_{a\in \mathcal{A}} \E[U(h,a)]
+\]
+
+\vspace{0.4em}
+\begin{itemize}
+  \item Conecta directamente con \textbf{métricas}: distintos costos \(\Rightarrow\) distintas reglas/umbrales.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 3 --------------------
+\begin{frame}{Clasificación: 0-1 loss \(\Rightarrow\) MAP}
+Supón clases \(Y=\{1,\dots,C\}\) y acciones \(A=Y\).
+
+\textbf{Pérdida 0-1:}
+\[
+\ell_{01}(y^*,\hat y)=\I(y^*\neq \hat y)
+\]
+
+\textbf{Riesgo:}
+\[
+\Risk(\hat y\mid x)=P(\hat y\neq y^*\mid x)=1-P(y^*=\hat y\mid x)
+\]
+
+\textbf{Decisión óptima:}
+\[
+\pi(x)=\argmax_{y\in Y} p(y\mid x)
+\]
+\begin{itemize}
+  \item Esta es la regla \textbf{MAP} (escoger la clase más probable).
+  \item \textbf{Limitación:} asume que todos los errores cuestan igual.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 4 --------------------
+\begin{frame}{Cost-sensitive classification: umbral por costos}
+Binario \(y\in\{0,1\}\). Matriz de pérdidas:
+\[
+\begin{pmatrix}
+\ell_{00} & \ell_{01}\\
+\ell_{10} & \ell_{11}
+\end{pmatrix}
+\]
+
+Sea \(p_1=p(y^*=1\mid x)\), \(p_0=1-p_1\).
+Elegimos \(\hat y=0\) si:
+\[
+\ell_{00}p_0+\ell_{10}p_1 \;<\; \ell_{01}p_0+\ell_{11}p_1
+\]
+
+Caso común \(\ell_{00}=\ell_{11}=0\):
+\[
+ p_1 \;<\; \frac{\ell_{01}}{\ell_{01}+\ell_{10}}
+\]
+
+\begin{itemize}
+  \item Si \(\ell_{10}=c\,\ell_{01}\) (FN cuesta \(c\) veces FP), entonces
+  \[
+  p_1 < \frac{1}{1+c}
+  \]
+  \item \textbf{Interpretación:} el \textbf{umbral} no es “mágico”; viene de costos/objetivo del negocio.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 5 --------------------
+\begin{frame}{Opción de rechazo: “no sé” con costo controlado}
+Acciones \(A=Y\cup\{0\}\), donde \(a=0\) es \textbf{rechazar}.
+\[
+\ell(y^*,a)=
+\begin{cases}
+0 & \text{si } a=y^* \in \{1,\dots,C\}\\
+\lambda_r & \text{si } a=0\\
+\lambda_e & \text{si } a\neq y^*,\ a\in \{1,\dots,C\}
+\end{cases}
+\]
+
+\textbf{Regla óptima (Chow):}
+\[
+a^*=
+\begin{cases}
+ y^* & \text{si } p^*>\lambda^*\\
+\text{rechazar} & \text{en otro caso}
+\end{cases}
+\quad\text{donde}\quad
+ y^*=\argmax_y p(y\mid x),\; p^*=\max_y p(y\mid x),\;
+\lambda^*=1-\frac{\lambda_r}{\lambda_e}
+\]
+
+\begin{itemize}
+  \item Útil en dominios de alto riesgo (medicina, finanzas).
+  \item Conecta con \textbf{calibración} y \textbf{confianza} del modelo.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 6 --------------------
+\begin{frame}{De decisiones a métricas: matriz de confusión}
+Para un umbral fijo, obtenemos: TP, FP, TN, FN.
+
+\begin{center}
+\begin{tabular}{c ccc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Predicción}}\\
+\cmidrule(lr){2-3}
+\textbf{Real} & 0 & 1\\
+\midrule
+0 & TN & FP\\
+1 & FN & TP\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Tasas (normalización por fila):}
+\[
+\text{TPR (Recall)}=\frac{TP}{TP+FN},\quad
+\text{FPR}=\frac{FP}{FP+TN},\quad
+\text{FNR}=1-\text{TPR}
+\]
+
+\textbf{Por columna:}
+\[
+\text{Precision}=\frac{TP}{TP+FP},\quad
+\text{NPV}=\frac{TN}{TN+FN}
+\]
+
+\begin{itemize}
+  \item Estas cantidades dependen del \textbf{umbral} \(\tau\).
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 7 --------------------
+\begin{frame}{ROC curve: TPR vs FPR al variar el umbral}
+\begin{itemize}
+  \item Un clasificador produce un \textbf{score} (idealmente \(p(y=1\mid x)\)).
+  \item Para cada umbral \(\tau\): obtenemos un punto \((\text{FPR}(\tau),\text{TPR}(\tau))\).
+  \item La curva ROC es el trazo de \(\text{TPR}\) contra \(\text{FPR}\) al variar \(\tau\).
+\end{itemize}
+
+\vspace{0.4em}
+\textbf{Resumen escalar:}
+\begin{itemize}
+  \item \textbf{AUC-ROC}: área bajo la ROC (más alto es mejor).
+  \item \textbf{EER}: punto donde \(\text{FPR}=\text{FNR}\) (más bajo es mejor).
+\end{itemize}
+
+\vspace{0.4em}
+\textbf{Nota sobre desbalance:}
+\begin{itemize}
+  \item ROC es relativamente insensible al desbalance, pero puede ocultar muchos FP absolutos.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 8 --------------------
+\begin{frame}{Precision-Recall curve: mejor para clases raras}
+\textbf{Definiciones (para umbral \(\tau\)):}
+\[
+P(\tau)=\frac{TP_\tau}{TP_\tau+FP_\tau},\qquad
+R(\tau)=\frac{TP_\tau}{TP_\tau+FN_\tau}
+\]
+
+\begin{itemize}
+  \item PR curve: graficar \textbf{Precision} vs \textbf{Recall} al variar \(\tau\).
+  \item En problemas con \textbf{clase positiva rara}, PR suele ser más informativa que ROC.
+\end{itemize}
+
+\vspace{0.4em}
+\textbf{Resumen escalar:}
+\begin{itemize}
+  \item \textbf{Average Precision (AP)}: promedio de precisión interpolada (relacionado con área bajo PR interpolada).
+  \item \textbf{mAP}: promedio de AP sobre múltiples curvas/tareas/clases.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 9 --------------------
+\begin{frame}{F-scores: combinar Precision y Recall}
+Para un umbral fijo (un punto en la PR curve), define \(P\) y \(R\).
+
+\textbf{F\(_\beta\):}
+\[
+F_\beta \;=\; (1+\beta^2)\frac{P\,R}{\beta^2 P + R}
+\]
+
+\textbf{Caso \(\beta=1\) (armoniza ambos):}
+\[
+F_1=\frac{2PR}{P+R}
+\]
+
+\begin{itemize}
+  \item Media armónica penaliza estrategias que “ganan” solo en \(P\) o solo en \(R\).
+  \item \(\beta>1\): prioriza \textbf{recall}; \(\beta<1\): prioriza \textbf{precision}.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 10 --------------------
+\begin{frame}{Efecto del desbalance: ROC vs PR (intuición)}
+Sea \(\pi=\frac{P}{P+N}\) (prevalencia), \(r=\frac{P}{N}=\frac{\pi}{1-\pi}\).
+
+\textbf{ROC:} \(\text{TPR}\) y \(\text{FPR}\) son tasas internas a positivos/negativos \(\Rightarrow\) menos sensibles a \(\pi\).
+
+\textbf{PR:} la precision depende de \(\pi\):
+\[
+\text{Prec}=\frac{TP}{TP+FP}
+=\frac{\text{TPR}}{\text{TPR}+\frac{1}{r}\text{FPR}}
+\]
+\begin{itemize}
+  \item Si \(\pi\) baja (positivos raros), la precision tiende a bajar para los mismos \(\text{TPR},\text{FPR}\).
+  \item Por eso \textbf{PR-AUC / AP} es muy usada en riesgo/fraude/default.
+\end{itemize}
+\end{frame}
+
+% -------------------- Slide 11 --------------------
+\begin{frame}{Takeaways para Semana 1}
+\begin{itemize}
+  \item Métricas \(\approx\) \textbf{pérdidas implícitas}: elige según el costo de errores (FP vs FN).
+  \item La decisión óptima depende de \(p(y\mid x)\) \(\Rightarrow\) importa \textbf{calibración} y \textbf{umbral}.
+  \item ROC: útil para comparar rankings; PR: preferible con \textbf{clase positiva rara}.
+\end{itemize}
+
+\vspace{0.6em}
+\centering
+\textit{Regla práctica: si el evento positivo es raro y caro, mira PR-AUC/AP y costos.}
+\end{frame}

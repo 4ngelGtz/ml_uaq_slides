@@ -1,0 +1,25 @@
+% theme/preamble.tex
+% (NO poner \documentclass aquí: eso va en main.tex)
+
+% --- Language & fonts ---
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc} % OK for pdfLaTeX
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Math & tables ---
+\usepackage{amsmath, amssymb, bm}
+\usepackage{booktabs}
+
+% --- Graphics ---
+\usepackage{graphicx}
+
+% --- Theme ---
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% --- Hyperlinks (casi siempre al final) ---
+\usepackage{hyperref}
