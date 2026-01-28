@@ -48,13 +48,13 @@
   \begin{columns}[t]
   \column{0.5\textwidth}
   \begin{itemize}
-    \item \hyperlink{sec:teoria}{\textbf{Teoría}}
-    \item \hyperlink{sec:labnumpy}{\textbf{Lab NumPy}}
-    \item \hyperlink{sec:labsklearn}{\textbf{Lab sklearn}}
+    \item \hyperref[sec:teoria]{\textbf{Teoría}}
+    \item \hyperref[sec:labnumpy]{\textbf{Lab NumPy}}
+    \item \hyperref[sec:labsklearn]{\textbf{Lab sklearn}}
   \end{itemize}
   \column{0.5\textwidth}
   \begin{itemize}
-    \item \hyperlink{sec:entregable}{\textbf{Entregable}}
+    \item \hyperref[sec:entregable]{\textbf{Entregable}}
   \end{itemize}
   \end{columns}
   \end{frame}
@@ -105,7 +105,7 @@
 \begin{columns}[t]
 \column{0.5\textwidth}
 \begin{itemize}
-  \item \hyperlink{sec:teoria}{\textbf{Teoría (PML)}}
+  \item \hyperref[sec:teoria]{\textbf{Teoría (PML)}}
   \begin{itemize}
     \small
     \item \key{Teorema de Bayes} y \key{piezas} (\term{prior}, \term{likelihood}, \term{posterior}, \term{evidencia}) \hfill \key{(2.3)}
@@ -115,7 +115,7 @@
     \item \key{Modelo Beta--Binomial}: posterior y posterior predictiva \hfill \key{(4.6.2)}
   \end{itemize}
 
-  \item \hyperlink{sec:labnumpy}{\textbf{Lab NumPy}}
+  \item \hyperref[sec:labnumpy]{\textbf{Lab NumPy}}
   \begin{itemize}
     \small
     \item \key{Beta--Bernoulli}: posterior (actualización por conteos)
@@ -125,13 +125,13 @@
 
 \column{0.5\textwidth}
 \begin{itemize}
-  \item \hyperlink{sec:labsklearn}{\textbf{Lab sklearn}}
+  \item \hyperref[sec:labsklearn]{\textbf{Lab sklearn}}
   \begin{itemize}
     \small
     \item \key{Umbral} (\(\tau\)) y reglas de decisión
     \item \key{Métricas}: Accuracy vs Precision/Recall vs Average Precision
   \end{itemize}
-  \item \hyperlink{sec:entregable}{\textbf{Entregable}}
+  \item \hyperref[sec:entregable]{\textbf{Entregable}}
 \end{itemize}
 \end{columns}
 \end{frame}
@@ -142,11 +142,12 @@
 \begin{frame}{¿Por qué es relevante el enfoque Bayesiano?}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Incertidumbre explícita:} obtenemos \(p(\theta\mid D)\), no solo un punto.
-  \item \key{Actualización coherente:} prior + datos \(\Rightarrow\) posterior.
-  \item \key{Predicción robusta:} posterior predictiva reduce sobreconfianza con pocos datos.
-  \item \key{Regularización interpretable:} priors como pseudoconteos.
-  \item \key{Comparación de modelos:} evidencia \(p(D)\).
+  \item \key{Objetivo:} inferir \(\theta=\Pr(y=1)\) (una \key{probabilidad}) a partir de datos \(D\).
+  \item \key{Incertidumbre explícita:} obtenemos una distribución \(p(\theta\mid D)\), no solo un punto.
+  \item \key{Actualización coherente:} \(\text{prior}+\text{datos}\Rightarrow\) \text{posterior}.
+  \item \key{Predicción robusta:} la \key{posterior predictiva} integra incertidumbre \(\Rightarrow\) menos sobreconfianza con pocos datos.
+  \item \key{Regularización interpretable:} priors como \key{pseudoconteos} (suavizado).
+  \item \key{Comparación de modelos/priors:} evidencia \(p(D)\) = \key{probabilidad marginal de los datos}.
 \end{itemize}
 \end{frame}
 
@@ -197,7 +198,7 @@
   \item \key{Prior:} \(p(\theta)\).
   \item \key{Likelihood:} \(p(D\mid\theta)\).
   \item \key{Posterior:} \(p(\theta\mid D)=\dfrac{p(D\mid\theta)\,p(\theta)}{p(D)}\).
-  \item \key{Evidencia:} \(p(D)=\int p(D\mid\theta)\,p(\theta)\,d\theta\).
+  \item \key{Evidencia:} \(p(D)=\int p(D\mid\theta)\,p(\theta)\,d\theta\) (\term{marginal likelihood}).
 \end{itemize}
 \end{frame}
 
@@ -215,29 +216,89 @@
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Derivación 2 (2.7.4 + 4.6.1): conjugación Beta}
+\begin{frame}{Distribución Beta (2.7.4): prior sobre probabilidades}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Prior: \(\theta\sim \mathrm{Beta}(\alpha,\beta)\), \(p(\theta)\propto \theta^{\alpha-1}(1-\theta)^{\beta-1}\).
-  \item Posterior (por Bayes):
+  \item Soporte: \(\theta\in(0,1)\) (ideal para probabilidades).
+  \item Densidad:
   \[
-    p(\theta\mid D)\propto \theta^{k+\alpha-1}(1-\theta)^{n-k+\beta-1}.
+    \theta\sim\mathrm{Beta}(\alpha,\beta),
+    \qquad
+    p(\theta)=\frac{1}{B(\alpha,\beta)}\theta^{\alpha-1}(1-\theta)^{\beta-1}.
   \]
-  \item Conjugación:
-  \[
-    \theta\mid D\sim \mathrm{Beta}(\alpha+k,\ \beta+n-k).
-  \]
-  \item Lectura: \(\alpha,\beta\) son \key{pseudoconteos} de éxitos/fracasos.
+  \item Lectura: \(\alpha,\beta\) controlan \key{sesgo} (media) y \key{fuerza} (concentración).
+  \item Interpretación útil: \(\alpha,\beta\) se comportan como \key{pseudoconteos} de éxitos/fracasos.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Derivación 3 (4.6.2): evidencia y predictiva}
+\begin{frame}{Priors Beta: ¿qué “forma” de creencia estás poniendo?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[c]
+\column{0.58\textwidth}
+\centering
+\includegraphics[width=\textwidth]{slides/figs/week02_beta_priors.png}
+\column{0.42\textwidth}
+\begin{itemize}
+  \item \(\mathrm{Beta}(1,1)\): uniforme.
+  \item \(\mathrm{Beta}(2,2)\): suave, centrada en \(0.5\).
+  \item \(\mathrm{Beta}(8,2)\): empuja hacia \(\theta\) altos.
+  \vspace{0.4em}
+  \item \key{Idea:} el prior dice qué valores de \(\theta\) son “plausibles” antes de ver datos.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Derivación 2 (4.6.1): conjugación Beta con Bernoulli/Binomial}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Evidencia:
+  \item Usamos: \(p(\theta\mid D)\propto p(D\mid\theta)\,p(\theta)\).
+  \item Como \(p(D\mid\theta)\propto \theta^{k}(1-\theta)^{n-k}\) y \(p(\theta)\propto \theta^{\alpha-1}(1-\theta)^{\beta-1}\),
+  el posterior queda:
   \[
-    p(D)=\frac{B(\alpha+k,\beta+n-k)}{B(\alpha,\beta)}.
+    p(\theta\mid D)\propto \theta^{k+\alpha-1}(1-\theta)^{n-k+\beta-1}.
   \]
+  \item Conjugación (misma familia):
+  \[
+    \theta\mid D\sim \mathrm{Beta}(\alpha+k,\ \beta+n-k).
+  \]
+  \item Lectura rápida: \(k\) suma a “éxitos” y \(n-k\) suma a “fracasos”.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{¿Qué es la \key{posterior predictiva}?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Definición:} distribución de \key{datos futuros} dado lo observado:
+  \[
+    p(D_{\text{new}}\mid D)=\int p(D_{\text{new}}\mid \theta)\,p(\theta\mid D)\,d\theta.
+  \]
+  \item \key{Idea:} en vez de fijar \(\theta\) a un punto (plug-in), \key{promediamos} sobre la incertidumbre en \(\theta\).
+  \item En Bernoulli/Binomial:
+  \begin{itemize}
+    \item 1 paso: \(p(y_{\text{new}}=1\mid D)=\mathbb{E}[\theta\mid D]\).
+    \item \(M\) pasos: \(S=\sum_{j=1}^M y_j \mid D\) tiene una distribución (Beta--Binomial) más “ancha” que plug-in.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Predictiva \term{plug-in} vs predictiva Bayesiana (en una línea)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Plug-in:} primero estimas \(\hat\theta\) (p.ej. MLE/MAP/media posterior) y luego predices como si fuera cierto:
+  \[
+    p_{\text{plug-in}}(D_{\text{new}}\mid D)=p(D_{\text{new}}\mid \hat\theta).
+  \]
+  \item \key{Bayes:} no fijas \(\theta\); promedias con el posterior:
+  \[
+    p(D_{\text{new}}\mid D)=\int p(D_{\text{new}}\mid \theta)\,p(\theta\mid D)\,d\theta.
+  \]
+  \item \key{Mensaje:} plug-in suele ser más “optimista”; Bayes tiende a ser menos sobreconfiante con pocos datos.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Modelo Beta--Binomial (4.6.2): posterior y predictiva}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
   \item Predictiva 1 paso:
   \[
     p(y_{\text{nuevo}}=1\mid D)=\mathbb{E}[\theta\mid D]=\frac{\alpha+k}{\alpha+\beta+n}.
@@ -260,14 +321,78 @@
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Derivación (4.6.2.10): evidencia Beta--Binomial \(p(k\mid n,\alpha,\beta)\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Definición (marginalizar \(\theta\)):
+  \[
+    p(k\mid n,\alpha,\beta)=\int_0^1 p(k\mid n,\theta)\,p(\theta\mid\alpha,\beta)\,d\theta.
+  \]
+  \item Sustituimos Binomial y Beta:
+  \[
+    p(k\mid n,\theta)=\binom{n}{k}\theta^k(1-\theta)^{n-k},
+    \quad
+    p(\theta)=\frac{1}{B(\alpha,\beta)}\theta^{\alpha-1}(1-\theta)^{\beta-1}.
+  \]
+  \item Agrupando potencias:
+  \[
+    p(k\mid n,\alpha,\beta)=\binom{n}{k}\frac{1}{B(\alpha,\beta)}
+    \int_0^1 \theta^{\alpha+k-1}(1-\theta)^{\beta+n-k-1}\,d\theta.
+  \]
+  \item Reconocemos la integral como \(B(\alpha+k,\beta+n-k)\) \(\Rightarrow\)
+  \[
+    p(k\mid n,\alpha,\beta)=\binom{n}{k}\,\frac{B(\alpha+k,\beta+n-k)}{B(\alpha,\beta)}.
+  \]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Evidencia \(p(D)\): intuición y comparación de modelos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Qué es:} \(p(D)\) es la \key{probabilidad marginal} del dataset (también \term{marginal likelihood}).
+  \item \key{Rol en Bayes:} es el \key{normalizador} (no depende de \(\theta\)).
+  \item \key{Intuición:} promedia el likelihood sobre \(\theta\) “plausibles” según el prior.
+  \item \key{Comparación:} para dos modelos/priors \(M_1,M_2\),
+  \[
+    \text{Bayes factor}=\frac{p(D\mid M_1)}{p(D\mid M_2)}.
+  \]
+  \item \key{Lectura:} favorece modelos que explican bien los datos \key{sin} “apostar” probabilidad en demasiados \(\theta\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Evidencia: misma data, distinto prior \(\Rightarrow\) distinto \(p(D)\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Datos (Binomial): \(n=10\), \(k=7\) éxitos.
+  \item Con prior \(\theta\sim\mathrm{Beta}(\alpha,\beta)\):
+  \[
+    p(k\mid n,\alpha,\beta)=\binom{n}{k}\,\frac{B(\alpha+k,\beta+n-k)}{B(\alpha,\beta)}.
+  \]
+  \item Evidencias (aprox.):
+  \begin{itemize}
+    \item \(\mathrm{Beta}(1,1)\): \(p(k\mid n)\approx 0.0909\)
+    \item \(\mathrm{Beta}(2,2)\): \(p(k\mid n)\approx 0.1119\)
+    \item \(\mathrm{Beta}(8,2)\): \(p(k\mid n)\approx 0.1486\)
+  \end{itemize}
+  \item \key{Interpretación (en simple):} estos números dicen qué tan “esperable” era ver \(7/10\) \emph{antes} de ver los datos, según cada prior.
+  \item \key{Lo que importa: comparaciones.} Por ejemplo:
+  \[
+    \frac{p(D\mid \mathrm{Beta}(8,2))}{p(D\mid \mathrm{Beta}(1,1))}\approx 1.63,
+    \qquad
+    \frac{p(D\mid \mathrm{Beta}(2,2))}{p(D\mid \mathrm{Beta}(1,1))}\approx 1.23.
+  \]
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Resumen y takeaways}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Bayes (2.3) combina prior y likelihood para obtener el posterior.
-  \item Bernoulli/Binomial (2.4) dan likelihood \(\theta^{k}(1-\theta)^{n-k}\).
-  \item Beta (2.7.4) es prior natural sobre probabilidades.
+  \item Bayes (2.3) combina prior y likelihood para obtener \(p(\theta\mid D)\).
+  \item Bernoulli/Binomial (2.4) \(\Rightarrow\) likelihood \(\theta^{k}(1-\theta)^{n-k}\).
+  \item Beta (2.7.4) \(\Rightarrow\) prior natural sobre probabilidades.
   \item Conjugación (4.6.1): \(\mathrm{Beta}(\alpha,\beta)\to \mathrm{Beta}(\alpha+k,\beta+n-k)\).
-  \item Beta–Binomial (4.6.2): evidencia y predictiva cerradas para inferencia y predicción.
+  \item Predictiva (4.6.2): promedia sobre \(\theta\) \(\Rightarrow\) menos sobreconfianza.
+  \item Evidencia (4.6.2.10): \(p(D)\) sirve para \key{comparar} priors/modelos (Bayes factor).
 \end{itemize}
 \end{frame}
 
@@ -276,37 +401,58 @@
 % =========================================================
 \section[Lab NumPy]{Lab NumPy\label{sec:labnumpy}}
 
-\begin{frame}{Lab NumPy — objetivo}
+\begin{frame}{Lab NumPy — objetivos (qué debes lograr)}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 
-Implementar Beta–Bernoulli de punta a punta:
 \begin{itemize}
-  \item prior \(\rightarrow\) posterior (actualización por conteos)
-  \item posterior \(\rightarrow\) posterior predictiva (1 ensayo y \(M\) ensayos)
-  \item comparación: plug-in vs Bayesiano
+  \item \key{Inferencia:} a partir de \(y\in\{0,1\}^n\), calcular \(N_1,N_0\) y actualizar
+  \((\alpha,\beta)\rightarrow(\alpha',\beta')\).
+  \item \key{Predicción:} calcular \(p(y_{\text{new}}=1\mid D)\) y aproximar \(p(S\mid D)\) para \(M\) futuros.
+  \item \key{Comparación:} contrastar predictiva \term{plug-in} vs \term{Bayesiana} y explicar el efecto del prior
+  (sesgo y fuerza) en 2--3 frases.
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Lab NumPy — Paso 0: datos y conteos}
+\begin{frame}{Lab NumPy — definiciones mínimas (puente con Teoría)}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
-
-\begin{verbatim}
-import numpy as np
-
-y = np.array([1,0,1,1,0,1,1,1,0,1])  # ejemplo 0/1
-
-N1 = int(y.sum())
-N0 = int(len(y) - N1)
-print("N1, N0 =", N1, N0)
-\end{verbatim}
+\begin{itemize}
+  \item \key{Parámetro:} \(\theta=\Pr(y=1)\).
+  \item \key{Datos:} \(D=\{y_i\}_{i=1}^n\), con conteos \(N_1=\sum_i y_i\), \(N_0=n-N_1\).
+  \item \key{Prior:} \(\theta\sim\mathrm{Beta}(\alpha,\beta)\).
+  \item \key{Posterior (conjugación):} \(\theta\mid D\sim\mathrm{Beta}(\alpha',\beta')\),
+  donde \(\alpha'=\alpha+N_1\), \(\beta'=\beta+N_0\).
+  \item \key{Posterior predictiva:} \(p(D_{\text{new}}\mid D)=\int p(D_{\text{new}}\mid\theta)p(\theta\mid D)d\theta\).
+  \item \key{Plug-in vs Bayes:} plug-in fija \(\theta=\hat\theta\); Bayes integra sobre \(\theta\).
+\end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Lab NumPy — Paso 1: define el prior Beta($\alpha$,$\beta$)}
+\begin{frame}[fragile]{Lab NumPy — Pregunta 1: ¿Qué datos tengo y qué resumen necesito?}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 
 \begin{verbatim}
-alpha, beta = 1.0, 1.0   # uniforme
-# Prueba luego: alpha,beta = 2.0,2.0 o 5.0,5.0
+ENTRADA: y[1..n]  (valores 0/1)
+
+N1 <- suma(y)
+N0 <- n - N1
+
+SALIDA: N1, N0
+CHEQUEO: N1 + N0 = n
+\end{verbatim}
+\begin{itemize}
+  \item Definición: \(N_1\) = número de éxitos, \(N_0\) = número de fracasos.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Pregunta 2: ¿Qué creía antes de ver datos? (prior)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+ELIGE el prior (alpha > 0, beta > 0)
+
+EJEMPLOS:
+  alpha = 1, beta = 1   (uniforme)
+  alpha = 2, beta = 2   (suave, centrado en 0.5)
+  alpha = 8, beta = 2   (sesgo hacia theta altos)
 \end{verbatim}
 \begin{itemize}
   \item Tip: \(\alpha+\beta\) controla la “fuerza” del prior.
@@ -314,71 +460,89 @@ alpha, beta = 1.0, 1.0   # uniforme
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Lab NumPy — Paso 2: posterior Beta($\alpha'$,$\beta'$)}
+\begin{frame}[fragile]{Lab NumPy — Pregunta 3: ¿Qué creo después de ver datos? (posterior)}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 
 \begin{verbatim}
-alpha_post = alpha + N1
-beta_post  = beta  + N0
+ACTUALIZA (conjugacion Beta--Bernoulli):
+alpha_post <- alpha + N1
+beta_post  <- beta  + N0
 
-print("posterior alpha,beta =", alpha_post, beta_post)
-\end{verbatim}
-\end{frame}
-
-\begin{frame}[fragile]{Lab NumPy — Paso 3: posterior predictiva (1 ensayo)}
-\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
-
-\begin{verbatim}
-p1_bayes = alpha_post / (alpha_post + beta_post)
-p0_bayes = 1.0 - p1_bayes
-print("p(y_new=1|D) =", p1_bayes)
-\end{verbatim}
-\end{frame}
-
-\begin{frame}[fragile]{Lab NumPy — Paso 4: predictiva (M ensayos) por simulación}
-\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
-
-\begin{verbatim}
-M = 20
-R = 50_000
-
-theta = np.random.beta(alpha_post, beta_post, size=R)
-S = np.random.binomial(M, theta)
-
-hist = np.bincount(S, minlength=M+1) / R
-print("sum p(S=0..M) =", hist.sum())
-\end{verbatim}
-\end{frame}
-
-\begin{frame}[fragile]{Lab NumPy — Paso 5: plug-in vs Bayes}
-\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
-
-\begin{verbatim}
-# MAP (si alpha_post,beta_post > 1), si no usa media posterior como fallback
-if alpha_post > 1 and beta_post > 1:
-    theta_map = (alpha_post - 1) / (alpha_post + beta_post - 2)
-else:
-    theta_map = alpha_post / (alpha_post + beta_post)
-
-R = 50_000
-S_plugin = np.random.binomial(M, theta_map, size=R)
-hist_plugin = np.bincount(S_plugin, minlength=M+1) / R
+SALIDA: alpha_post, beta_post
+CHEQUEO: alpha_post > 0 y beta_post > 0
 \end{verbatim}
 \begin{itemize}
+  \item Definición: \(\alpha'=\alpha+N_1\), \(\beta'=\beta+N_0\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Pregunta 4: ¿Qué predigo del siguiente ensayo? (predictiva 1 paso)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+PREDICTIVA POSTERIOR (1 ensayo):
+p1_bayes <- alpha_post / (alpha_post + beta_post)
+p0_bayes <- 1 - p1_bayes
+
+SALIDA: p(y_nuevo = 1 | D) = p1_bayes
+\end{verbatim}
+\begin{itemize}
+  \item Definición: \(p(y_{\text{new}}=1\mid D)=\mathbb{E}[\theta\mid D]=\dfrac{\alpha'}{\alpha'+\beta'}\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Pregunta 5: ¿Qué predigo de \(M\) ensayos futuros? (predictiva de conteos)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+FIJA M (ensayos futuros) y R (numero de simulaciones)
+
+PARA r = 1..R:
+  muestrea theta_r ~ Beta(alpha_post, beta_post)
+  muestrea S_r ~ Binomial(M, theta_r)
+
+ESTIMA p(S | D) con {S_r} (histograma / frecuencias)
+CHEQUEO: suma_s p_hat(S=s | D) ~= 1
+\end{verbatim}
+\begin{itemize}
+  \item Definición: \(S=\sum_{j=1}^M y_j\) = número de éxitos futuros en \(M\) ensayos.
+  \item Lógica Bayesiana: muestrear \(\theta\sim\mathrm{Beta}(\alpha',\beta')\) y luego \(S\sim\mathrm{Binomial}(M,\theta)\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lab NumPy — Pregunta 6: ¿Qué cambia si hago plug-in vs Bayes?}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+
+\begin{verbatim}
+ELIGE un estimador puntual para theta:
+  si alpha_post > 1 y beta_post > 1:
+    theta_map <- (alpha_post - 1) / (alpha_post + beta_post - 2)
+  si no:
+    theta_map <- alpha_post / (alpha_post + beta_post)
+
+PREDICTIVA PLUG-IN:
+  muestrea S_r_plugin ~ Binomial(M, theta_map)
+
+COMPARA:
+  compara media/varianza y colas de S_plugin vs S_bayes
+\end{verbatim}
+\begin{itemize}
+  \item Definición: plug-in usa \(\theta=\hat\theta\) (punto); Bayes integra sobre \(\theta\).
+  \item Nota: el modo (MAP) de una Beta es \(\dfrac{\alpha'-1}{\alpha'+\beta'-2}\) solo si \(\alpha',\beta'>1\).
   \item Qué comparar: varianza (dispersión) y colas (sobreconfianza).
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Lab NumPy — checklist}
+\begin{frame}{Lab NumPy — entregables (checklist)}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 
-Tu notebook debe incluir:
+Tu notebook debe incluir (evaluable):
 \begin{itemize}
-  \item \((\alpha,\beta)\), \((\alpha',\beta')\), \(N_1,N_0\)
-  \item \(p(y_{\text{nuevo}}=1\mid D)\)
-  \item aproximación de \(p(S\mid D)\) para algún \(M\)
-  \item comparación plug-in vs Bayes (figura o estadísticos)
-  \item 2–3 frases: efecto de cambiar el prior (sesgo y fuerza)
+  \item \key{Resultados:} \((\alpha,\beta)\), \((\alpha',\beta')\), \(N_1,N_0\), y \(p(y_{\text{new}}=1\mid D)\).
+  \item \key{Predictiva:} aproximación de \(p(S\mid D)\) para algún \(M\) (elige \(M\) y \(R\) y repórtalos).
+  \item \key{Comparación:} Bayes vs plug-in (una figura o, mínimo, media/varianza y una probabilidad de cola).
+  \item \key{Discusión (2--3 frases):} qué cambia al variar \(\alpha+\beta\) (fuerza) y la media del prior (sesgo).
+  \item \key{Reproducible:} semilla fija y celdas sin salidas gigantes.
 \end{itemize}
 \end{frame}
 
