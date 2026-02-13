@@ -510,27 +510,35 @@ CHEQUEO: suma_s p_hat(S=s | D) ~= 1
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Lab NumPy — Pregunta 6: ¿Qué cambia si hago plug-in vs Bayes?}
+\begin{frame}{Lab NumPy — Pregunta 6: Predictiva plug-in vs Bayesiana}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 
-\begin{verbatim}
-ELIGE un estimador puntual para theta:
-  si alpha_post > 1 y beta_post > 1:
-    theta_map <- (alpha_post - 1) / (alpha_post + beta_post - 2)
-  si no:
-    theta_map <- alpha_post / (alpha_post + beta_post)
+\key{Objetivo:} Comparar dos formas de predecir \(S\) = número de éxitos en \(M\) ensayos futuros.
 
-PREDICTIVA PLUG-IN:
-  muestrea S_r_plugin ~ Binomial(M, theta_map)
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcc}
+\toprule
+ & \textbf{S\_bayes} & \textbf{S\_plugin} \\
+\midrule
+Qué es & Muestras de \(p(S\mid D)\) & Muestras de \(\mathrm{Bin}(M,\hat\theta)\) \\
+Cómo se obtiene & \(\theta\sim\mathrm{Beta}(\alpha',\beta')\), luego \(S\sim\mathrm{Bin}(M,\theta)\) & \(S\sim\mathrm{Bin}(M,\theta_{\mathrm{MAP}})\) con \(\theta\) fijo \\
+Incertidumbre sobre \(\theta\) & Sí (integra sobre la posterior) & No (usa un solo \(\hat\theta\)) \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-COMPARA:
-  compara media/varianza y colas de S_plugin vs S_bayes
-\end{verbatim}
-\begin{itemize}
-  \item Definición: plug-in usa \(\theta=\hat\theta\) (punto); Bayes integra sobre \(\theta\).
-  \item Nota: el modo (MAP) de una Beta es \(\dfrac{\alpha'-1}{\alpha'+\beta'-2}\) solo si \(\alpha',\beta'>1\).
-  \item Qué comparar: varianza (dispersión) y colas (sobreconfianza).
-\end{itemize}
+\vspace{0.5em}
+\key{Pasos:}
+\begin{enumerate}
+  \item \key{Estimador puntual:} \(\theta_{\mathrm{MAP}}\). Si \(\alpha'>1\) y \(\beta'>1\): \(\dfrac{\alpha'-1}{\alpha'+\beta'-2}\); si no: \(\dfrac{\alpha'}{\alpha'+\beta'}\).
+  \item \key{S\_plugin:} para \(r=1,\ldots,R\), muestrea \(S_r \sim \mathrm{Binomial}(M,\theta_{\mathrm{MAP}})\).
+  \item \key{S\_bayes:} para \(r=1,\ldots,R\), muestrea \(\theta_r\sim\mathrm{Beta}(\alpha',\beta')\), luego \(S_r\sim\mathrm{Binomial}(M,\theta_r)\).
+  \item \key{Comparar:} media, varianza y una probabilidad de cola (ej.\ \(P(S\le k)\) o \(P(S\ge k)\)) de S\_plugin vs S\_bayes. Opcional: histogramas superpuestos.
+\end{enumerate}
+
+\small
+\key{Interpretación:} S\_bayes suele tener más varianza y colas más pesadas; el plug-in suele subestimar la incertidumbre predictiva.
 \end{frame}
 
 \begin{frame}{Lab NumPy — entregables (checklist)}

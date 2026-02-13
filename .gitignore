@@ -33,3 +33,4 @@ labs/**/outputs/*
 
 # Local PDFs
 /book1.pdf
+.pdfdeps/
