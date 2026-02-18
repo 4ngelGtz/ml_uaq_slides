@@ -3,7 +3,7 @@
 % Metadata
 % =========================
 \title[Semana 3: Probabilidad multivariada]{Semana 3 — Probabilidad (modelos multivariados)}
-\subtitle{Covarianza y correlación, Gaussiana multivariada, condicionamiento por bloques, imputación y GMM}
+\subtitle{De describir dependencia a inferir faltantes: \(\Sigma/R\) \(\rightarrow\) MVN \(\rightarrow\) Mahalanobis \(\rightarrow\) condicionamiento \(\rightarrow\) imputación (Iris) \(\rightarrow\) GMM}
 \author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
 %\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
 \date{Semana 3}
@@ -47,13 +47,13 @@
   \begin{columns}[t]
   \column{0.5\textwidth}
   \begin{itemize}
-    \item \hyperref[sec:teoria]{\textbf{Teoría}}
-    \item \hyperref[sec:labnumpy]{\textbf{Lab NumPy}}
-    \item \hyperref[sec:labsklearn]{\textbf{Lab sklearn}}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
   \end{itemize}
   \column{0.5\textwidth}
   \begin{itemize}
-    \item \hyperref[sec:entregable]{\textbf{Entregable}}
+    \item \textbf{Entregable}
   \end{itemize}
   \end{columns}
   \end{frame}
@@ -79,18 +79,18 @@
 \begin{itemize}
   \item \key{Capítulo 3 — Probability: Multivariate Models}
   \begin{itemize}
-    \item \key{3.1.1} Covariance
-    \item \key{3.1.2} Correlation
-    \item \key{3.1.3} Uncorrelated does not imply independent
-    \item \key{3.1.4} Correlation does not imply causation
-    \item \key{3.1.5} Simpson's paradox
-    \item \key{3.2.1} Definition
-    \item \key{3.2.2} Mahalanobis distance
-    \item \key{3.2.3} Marginals and conditionals of an MVN \key{*}
+    \item \key{3.1.1} Covarianza
+    \item \key{3.1.2} Correlación
+    \item \key{3.1.3} No correlación \(\not\Rightarrow\) independencia
+    \item \key{3.1.4} Correlación \(\not\Rightarrow\) causalidad
+    \item \key{3.1.5} Paradoja de Simpson
+    \item \key{3.2.1} Definición de la MVN
+    \item \key{3.2.2} Distancia de Mahalanobis
+    \item \key{3.2.3} Marginales y condicionales de una MVN \key{*}
     \item \key{3.2.4} Ejemplo: condicionamiento en una Gaussiana 2D
     \item \key{3.2.5} Ejemplo: imputación de valores faltantes \key{*}
-    \item \key{3.3.1} Bayes rule for Gaussians
-    \item \key{3.5.1} Gaussian mixture models
+    \item \key{3.3.1} Regla de Bayes para gaussianas
+    \item \key{3.5.1} Modelos de mezcla gaussianos (GMM)
   \end{itemize}
 \end{itemize}
 \end{frame}
@@ -98,28 +98,41 @@
 \begin{frame}{Temario de la Semana 3 (qué cubrimos hoy)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \hyperref[sec:teoria]{\textbf{Teoría (PML)}}
+  \item \textbf{Teoría (PML)}
   \begin{itemize}\small
-    \item \key{Covarianza vs correlación} (qué mide cada una) \hfill \key{(3.1.1–3.1.2)}
-    \item \key{Alertas:} \(\rho=0\not\Rightarrow\) independencia; correlación \(\not\Rightarrow\) causalidad \hfill \key{(3.1.3–3.1.4)}
-    \item \key{Paradoja de Simpson} (agregado vs estratificado) \hfill \key{(3.1.5)}
-    \item \key{MVN} (\(\mu,\Sigma\)) y geometría (Mahalanobis) \hfill \key{(3.2.1–3.2.2)}
-    \item \key{Condicionamiento por bloques} y su uso en imputación \hfill \key{(3.2.3, 3.2.5)}
-    \item \key{Puente a mixtures:} GMM \hfill \key{(3.5.1)}
+    \item \key{1) Describir dependencia:} \(\hat{\Sigma}\) y \(\hat{R}\) \hfill \key{(3.1.1–3.1.2)}
+    \item \key{2) Interpretar con cuidado:} \(\rho=0\not\Rightarrow\) independencia; correlación \(\not\Rightarrow\) causalidad; Simpson \hfill \key{(3.1.3–3.1.5)}
+    \item \key{3) Modelar:} MVN \(\mathcal{N}(\mu,\Sigma)\) como baseline \hfill \key{(3.2.1)}
+    \item \key{4) Geometría/probabilidad:} Mahalanobis (qué tan “raro” es un punto) \hfill \key{(3.2.2)}
+    \item \key{5) Inferir:} marginales/condicionales y condicionamiento por bloques \hfill \key{(3.2.3)}
+    \item \key{6) Aplicación:} imputación (Iris) como \(\E[X_m\mid X_o]\) \hfill \key{(3.2.5)}
+    \item \key{7) Extensión:} GMM para multimodalidad \hfill \key{(3.5.1)}
   \end{itemize}
-  \item \hyperref[sec:labnumpy]{\textbf{Lab NumPy}}
+  \item \textbf{Lab NumPy}
   \begin{itemize}\small
     \item \key{Condicionamiento en una MVN} (bloques + fórmulas)
     \item \key{Imputación:} \(\E[x_{\text{miss}}\mid x_{\text{obs}}]\)
     \item \key{Evaluación:} MSE en valores ocultados
   \end{itemize}
-  \item \hyperref[sec:labsklearn]{\textbf{Lab sklearn}}
+  \item \textbf{Lab sklearn}
   \begin{itemize}\small
     \item \key{GaussianMixture:} ajustar un GMM en 2D
     \item \key{Leer parámetros:} weights, means, covariances
     \item \key{Visualización:} puntos + elipses por componente
   \end{itemize}
-  \item \hyperref[sec:entregable]{\textbf{Entregable}}
+  \item \textbf{Entregable}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Hilo conductor de la semana (Iris)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Vamos a usar \key{Iris} como ejemplo mental: 4 variables (sépalo/pétalo).
+  \item \key{Pregunta 1 (describir):} ¿qué variables se mueven juntas? \(\Rightarrow\) \(\hat{\Sigma}\), \(\hat{R}\).
+  \item \key{Pregunta 2 (modelar):} si aproximamos con una MVN, ¿cómo se ve la nube? \(\Rightarrow\) geometría de \(\Sigma\).
+  \item \key{Pregunta 3 (medir rareza):} ¿qué puntos son atípicos bajo ese modelo? \(\Rightarrow\) Mahalanobis.
+  \item \key{Pregunta 4 (inferir faltantes):} si falta una variable, ¿qué valor es más plausible? \(\Rightarrow\) condicionamiento \(\rightarrow\) imputación.
+  \item \key{Pregunta 5 (ir más allá):} si hay varias “nubes”, ¿cómo lo modelamos? \(\Rightarrow\) GMM.
 \end{itemize}
 \end{frame}
 
@@ -128,42 +141,56 @@
 % =========================================================
 \section[Teoría]{Teoría\label{sec:teoria}}
 
-\begin{frame}{Setup: vector aleatorio, media y covarianza}
+\begin{frame}{Punto de partida: vector aleatorio, media y covarianza}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Variable aleatoria multivariada: \(X\in\mathbb{R}^D\).
-  \item Media: \(\mu=\E[X]\in\mathbb{R}^D\).
-  \item Covarianza: \(\Sigma=\E[(X-\mu)(X-\mu)^\top]\in\mathbb{R}^{D\times D}\).
-  \item Entrada \((i,j)\): \(\Sigma_{ij}=\mathrm{Cov}(X_i,X_j)\).
+  \item En datos reales (p.\,ej. Iris), cada fila es un vector \(x\in\mathbb{R}^D\) (aquí \(D=4\)).
+  \item Modelamos \(X\) como vector aleatorio: \(X\in\mathbb{R}^D\).
+  \item \key{Media}: \(\mu=\E[X]\) (valor “típico” por variable).
+  \item \key{Covarianza}: \(\Sigma=\E[(X-\mu)(X-\mu)^\top]\) (escala y dependencia lineal).
+  \item \key{Entrada}: \(\Sigma_{ij}=\mathrm{Cov}(X_i,X_j)\) indica si dos variables tienden a subir/bajar juntas.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Covarianza vs correlación (por qué ambas importan)}
+\begin{frame}{Construcción en práctica: \(\hat{\Sigma}\) y \(\hat{R}\) (pasos)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
-\begin{itemize}
-  \item \key{Covarianza} (\(\Sigma\)):
-  \begin{itemize}
-    \item está en \term{unidades} mezcladas,
-    \item sirve para geometría (elipses) y condicionamiento.
-  \end{itemize}
-  \item \key{Correlación} (\(R\)):
+\small
+\begin{enumerate}
+  \item \key{Paso 1 — datos:} Tenemos \(n\) observaciones \(x_1,\dots,x_n\) (filas). Puede ser Iris (4 variables) o un ejemplo 3D.
+  \item \key{Paso 2 — covarianza muestral:} Estimamos \(\hat{\Sigma}_{ij}\) como el promedio centrado de productos de desviaciones:
   \[
-    R_{ij}=\frac{\Sigma_{ij}}{\sqrt{\Sigma_{ii}\Sigma_{jj}}}\in[-1,1]
+  \hat{\Sigma}_{ij}=\frac{1}{n-1}\sum_{k=1}^{n}(x_{ki}-\bar{x}_i)(x_{kj}-\bar{x}_j),
+  \quad \bar{x}_i=\frac{1}{n}\sum_{k=1}^{n}x_{ki}.
   \]
-  \item \key{Regla práctica:} usa \(\Sigma\) para cálculos; usa \(R\) para comparar dependencias.
-\end{itemize}
-\centering
-\includegraphics[width=0.75\linewidth,height=0.40\textheight,keepaspectratio]{week03_cov_corr.png}
+  Diagonal = varianza muestral; fuera de diagonal = covarianza (nota: \term{unidades mezcladas}).
+  \item \key{Paso 3 — correlación:} Estandarizamos a escala \([-1,1]\):
+  \[
+  \hat{R}_{ij}=\frac{\hat{\Sigma}_{ij}}{\sqrt{\hat{\Sigma}_{ii}\hat{\Sigma}_{jj}}}.
+  \]
+  \item \key{Lectura rápida:} usa \(\hat{R}\) para comparar dependencias; usa \(\hat{\Sigma}\) para cálculos (geometría y condicionamiento).
+\end{enumerate}
 \end{frame}
 
-\begin{frame}{Pitfall 1: \(\rho=0\) no implica independencia}
+\begin{frame}{\(\hat{\Sigma}\) vs \(\hat{R}\): mismo dato, dos “lentes”}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\centering
+\includegraphics[width=0.85\linewidth,height=0.75\textheight,keepaspectratio]{week03_cov_corr.png}
+
+\vspace{0.3em}
+\small
+\small
+\key{Idea:} la izquierda conserva escala (varianzas grandes dominan); la derecha estandariza y hace comparables las relaciones lineales.\\
+Izquierda: \(\hat{\Sigma}\). Derecha: \(\hat{R}\).
+\end{frame}
+
+\begin{frame}{Alerta 1: \(\rho=0\) no implica independencia}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{columns}[T,onlytextwidth]
 \column{0.55\textwidth}
 \begin{itemize}
-  \item \key{Hecho:} \( \mathrm{Cov}(X,Y)=0 \) \(\not\Rightarrow\) \(X\perp Y\) (en general).
-  \item Correlación captura \key{dependencia lineal}; puede haber dependencia no lineal.
-  \item \key{Lectura cuidadosa:} “no hay correlación” no significa “no hay relación”.
+  \item \key{Mensaje}: correlación mide \term{dependencia lineal}. Puede haber relación no lineal con \(\rho\approx 0\).
+  \item \key{Hecho}: \( \mathrm{Cov}(X,Y)=0 \) \(\not\Rightarrow\) \(X\perp Y\) (salvo casos especiales como gaussianas).
+  \item \key{Traducción práctica}: “no hay correlación” \(\neq\) “no hay relación”.
 \end{itemize}
 \column{0.45\textwidth}
 \centering
@@ -171,27 +198,27 @@
 \end{columns}
 \end{frame}
 
-\begin{frame}{Pitfall 2: correlación no implica causalidad}
+\begin{frame}{Alerta 2: correlación no implica causalidad}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Puede haber confusores, selección de muestra, o causalidad invertida.
-  \item \key{Pregunta guía:} ¿qué variable “mueve” a cuál y qué información falta?
+  \item Una correlación puede venir de \key{confusores}, \key{sesgo de selección} o \key{causalidad invertida}.
+  \item \key{Pregunta guía}: ¿qué variable podría estar afectando a ambas? ¿qué estoy dejando fuera?
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Paradoja de Simpson: qué es y ejemplo (Berkeley)}
+\begin{frame}{Paradoja de Simpson: cuando el agregado engaña}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Qué es:} Una asociación en datos \key{agregados} desaparece o \key{se invierte} al \key{estratificar} por una tercera variable (confusor).
-  \item \key{Ejemplo — admisión por sexo (Berkeley, 1973):}
+  \item \key{Definición}: una tendencia en datos \key{agregados} cambia (o se invierte) al \key{estratificar} por una tercera variable.
+  \item \key{Ejemplo (Berkeley, 1973)}: al controlar por departamento, la interpretación cambia.
   \begin{itemize}
-    \item \key{Agregado:} parece sesgo contra mujeres.
-    \item \key{Por departamento:} la historia cambia al controlar por “departamento”.
+    \item \key{Agregado}: parece haber sesgo.
+    \item \key{Estratificado}: aparece el rol del confusor (departamento).
   \end{itemize}
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Paradoja de Simpson: visualizar y lección}
+\begin{frame}{Paradoja de Simpson: visualización y “checklist mental”}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \centering
 \includegraphics[width=\linewidth,height=0.52\textheight,keepaspectratio]{week03_simpson.png}
@@ -199,28 +226,30 @@
 
 \small
 \begin{itemize}
-  \item \key{Lección:} antes de interpretar una asociación, pregunta “¿hay estratos relevantes (departamento, cohorte, nivel educativo) que debo considerar?”.
+  \item \key{Checklist}: antes de concluir, pregunta “¿qué variable podría estar mezclando grupos?”.
+  \item Ejemplos de estratos: departamento, cohorte, nivel educativo, hospital/escuela, etc.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{MVN: definición y parámetros}
+\begin{frame}{MVN: un baseline probabilístico para vectores}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
+  \item Idea: aproximar una nube de datos con una sola \term{elipse} (2D) / \term{elipsoide} (D).
   \item Notación: \(X\sim\mathcal{N}(\mu,\Sigma)\).
-  \item \(\mu\): centro; \(\Sigma\): escala + orientación (forma de elipses).
-  \item En 2D: curvas de nivel elípticas; en \(D\): elipsoides.
+  \item \(\mu\): centro; \(\Sigma\): escala + orientación (forma).
+  \item Esto nos da dos cosas: \key{geometría} (elipses) y \key{cálculo cerrado} (condicionales).
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Interpretación geométrica de \(\Sigma\): qué ``ve'' la matriz}
+\begin{frame}{Geometría de \(\Sigma\): cómo “lee” la MVN la nube de datos}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{columns}[T,onlytextwidth]
 \column{0.52\textwidth}
 \begin{itemize}
-  \item Curvas de densidad constante de una MVN: \term{elipses} (2D) / \term{elipsoides} (3D+).
-  \item \key{Autovectores} de \(\Sigma\): direcciones de \term{máxima varianza}.
-  \item \key{Autovalores}: varianza en cada dirección (eje \(\propto\sqrt{\lambda}\)).
-  \item \key{Intuición:} \(\Sigma\) “rota” y “estira” una nube esférica.
+  \item En una MVN, las curvas de igual densidad son \term{elipses}/\term{elipsoides}.
+  \item \key{Autovectores}: direcciones principales (ejes) de la nube.
+  \item \key{Autovalores}: dispersión en cada dirección (eje \(\propto\sqrt{\lambda}\)).
+  \item \key{Lectura práctica}: \(\Sigma\) codifica \term{escala} y \term{correlación} en una sola matriz.
 \end{itemize}
 \column{0.48\textwidth}
 \centering
@@ -228,14 +257,23 @@
 \end{columns}
 \end{frame}
 
-\begin{frame}{Mahalanobis: ``distancia en unidades de \(\Sigma\)''}
+\begin{frame}{Distancia de Mahalanobis: qué es y para qué sirve}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{columns}[T,onlytextwidth]
 \column{0.55\textwidth}
 \begin{itemize}
-  \item \(d_M(x,\mu)=\sqrt{(x-\mu)^\top\Sigma^{-1}(x-\mu)}\).
-  \item “Lejos” depende de varianza y correlación.
-  \item Elipses \(d_M(x,\mu)=c\) alineadas con autovectores de \(\Sigma\).
+  \item \key{Definición:}
+  \[
+    d_M(x,\mu)=\sqrt{(x-\mu)^\top\Sigma^{-1}(x-\mu)}.
+  \]
+  \item \key{Intuición:} mide “lejanía” en unidades que respetan \term{escala} y \term{correlación}.
+  \item \key{Sirve para:}
+  \begin{itemize}
+    \item detectar \term{atípicos} bajo una MVN (outliers),
+    \item entender el \term{log-likelihood} gaussiano (el término cuadrático),
+    \item conectar con GMM: cada componente usa su \(\Sigma_k\) para medir cercanía.
+  \end{itemize}
+  \item \key{Puente:} la geometría que define \(d_M\) es la misma que usamos al \key{condicionar} (siguiente bloque).
 \end{itemize}
 \column{0.45\textwidth}
 \centering
@@ -243,19 +281,31 @@
 \end{columns}
 \end{frame}
 
-\begin{frame}{Marginales y condicionales de una MVN (la pieza clave)}
+\begin{frame}{De “medir rareza” a “inferir faltantes”}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Marginal:} tomar un subconjunto de coordenadas preserva la normalidad.
-  \item \key{Condicional:} si particionas \(x=(x_a,x_b)\), entonces \(p(x_b\mid x_a)\) sigue siendo normal.
-  \item Esto habilita \key{condicionamiento por bloques} e \key{imputación}.
+  \item Con \(\mu\) y \(\Sigma\) ya podemos:
+  \begin{itemize}
+    \item evaluar qué tan plausible es un punto (vía \(d_M\)),
+    \item y también \key{inferir} partes faltantes de un vector.
+  \end{itemize}
+  \item La herramienta clave es que en la MVN, \key{marginales} y \key{condicionales} siguen siendo gaussianas.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Condicionamiento por bloques: fórmulas}
+\begin{frame}{Marginales y condicionales en una MVN (la pieza que habilita todo)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Notación:} \(a\) = variables \term{observadas}, \(b\) = variables \term{faltantes} (o a condicionar).
+  \item \key{Marginal}: si te quedas con algunas coordenadas, sigues en el mundo gaussiano.
+  \item \key{Condicional}: si conoces parte del vector, la distribución del resto también es gaussiana.
+  \item \key{Consecuencia}: podemos calcular \(\E[X_{\text{faltante}}\mid X_{\text{observado}}]\) en forma cerrada \(\Rightarrow\) imputación.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Condicionamiento por bloques: la receta (MVN)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Notación}: \(a\) = variables \term{observadas}; \(b\) = variables \term{faltantes} (o las que queremos predecir).
   \item Partición:
   \[
     x=\begin{pmatrix}x_a\\x_b\end{pmatrix},\quad
@@ -269,14 +319,14 @@
     \qquad
     \Sigma_{b\mid a}=\Sigma_{bb}-\Sigma_{ba}\Sigma_{aa}^{-1}\Sigma_{ab}.
   \]
-  \item Nota: \(\Sigma_{b\mid a}\) no depende de \(a\). Para imputar con la media, basta \(\mu_{b\mid a}\).
+  \item Nota: \(\Sigma_{b\mid a}\) no depende de \(a\). Para imputación “simple”, usamos la media \(\mu_{b\mid a}\).
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Condicionamiento por bloques: ejemplo numérico (D=5)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \small
-\key{Ejemplo:} observamos las primeras 3 variables, faltan las últimas 2.
+\key{Ejemplo:} observamos 3 variables (\(a\)) y faltan 2 (\(b\)). Así “se ven” \(\mu\) y \(\Sigma\).
 \begin{itemize}\small
   \item Vector de medias: \(\mu=\begin{pmatrix}2.1\\1.8\\3.0\\4.2\\5.5\end{pmatrix}\) (shape \((5,)\)).
   \item Matriz de covarianza \(\Sigma\) (shape \((5\times 5)\)):
@@ -293,16 +343,16 @@
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Condicionamiento por bloques: ejemplo numérico (D=5) — bloques}
+\begin{frame}{Condicionamiento por bloques: ejemplo numérico (D=5) — subbloques}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \small
 \begin{itemize}\small
-  \item Bloques extraídos de \(\mu\):
+  \item \key{Partir \(\mu\)} en observado/faltante:
   \[
   \mu_a=\begin{pmatrix}2.1\\1.8\\3.0\end{pmatrix}\quad\text{(shape }(3,)\text{)},\qquad
   \mu_b=\begin{pmatrix}4.2\\5.5\end{pmatrix}\quad\text{(shape }(2,)\text{)}.
   \]
-  \item Bloques extraídos de \(\Sigma\):
+  \item \key{Partir \(\Sigma\)} en 4 bloques (observado-observado, observado-faltante, etc.):
   \[
   \Sigma_{aa}=\begin{pmatrix}1.2&0.5&0.3\\0.5&0.9&0.2\\0.3&0.2&1.5\end{pmatrix}\quad\text{(shape }(3\times 3)\text{)},
   \]
@@ -312,11 +362,12 @@
   \Sigma_{ba}=\Sigma_{ab}^\top,\quad
   \Sigma_{bb}=\begin{pmatrix}2.0&0.8\\0.8&1.8\end{pmatrix}\quad\text{(shape }(2\times 2)\text{)}.
   \]
+  \item \key{Lectura}: \(\Sigma_{aa}\) es lo que invertimos; \(\Sigma_{ba}\) “transporta” información de observado \(\rightarrow\) faltante.
   \item Para imputar: \(\mu_{b\mid a}=\mu_b+\Sigma_{ba}\Sigma_{aa}^{-1}(x_a-\mu_a)\) (shape \((2,)\)).
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Ejemplo: condicionamiento en 2D (intuición visual)}
+\begin{frame}{Condicionamiento en 2D: intuición visual (rebanar la elipse)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \centering
 \includegraphics[width=0.82\linewidth,height=0.52\textheight,keepaspectratio]{week03_conditioning_2d.png}
@@ -324,19 +375,21 @@
 
 \small
 \begin{itemize}
-  \item En 2D: \(a=x_1\), \(b=x_2\). Fijar \(x_1=a\) “rebana” la elipse y produce una normal 1D para \(x_2\mid x_1=a\).
+  \item En 2D: observado \(a=x_1\), faltante \(b=x_2\).
+  \item Fijar \(x_1=a\) “rebana” la nube: queda una normal 1D para \(x_2\mid x_1=a\).
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Imputación como condicionamiento: ejemplo con Iris}
+\begin{frame}{Imputación (Iris) = condicionamiento + evaluación honesta}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{columns}[T,onlytextwidth]
 \column{0.52\textwidth}
 \begin{itemize}
-  \item \key{Objetivo:} rellenar celdas faltantes con la \key{media condicional} \(\E[X_m \mid X_o]\).
-  \item \key{Ejemplo — Iris:} 4 variables. Se \key{oculta} el ancho del pétalo en 20\,\% de filas; se estima \((\mu,\Sigma)\) con el resto; se imputa con \(\mu_{m\mid o}\).
-  \item \key{Gráfica:} cada punto azul = una fila con valor oculto; ejes = verdadero (oculto) vs imputado. Diagonal \(y=x\) = imputación perfecta.
-  \item \key{Evaluación:} MSE solo sobre celdas ocultadas; comparar contra baseline (media marginal).
+  \item \key{Idea}: tratar “faltante” como \(X_m\) y lo observado como \(X_o\).
+  \item \key{Regla}: imputación determinista \(x_m \leftarrow \E[X_m\mid X_o=x_o]\) (media condicional).
+  \item \key{Experimento}: ocultamos ancho del pétalo en 20\,\% de filas; estimamos \((\mu,\Sigma)\) con las filas observadas; imputamos y comparamos.
+  \item \key{Gráfica}: cada punto azul = una celda ocultada (verdadero vs imputado). Diagonal \(y=x\) = ideal.
+  \item \key{Métrica}: MSE \textbf{solo} donde ocultaste; compara contra baseline (media marginal por columna).
 \end{itemize}
 \column{0.48\textwidth}
 \centering
@@ -344,16 +397,16 @@
 \end{columns}
 \end{frame}
 
-\begin{frame}{Puente: ¿por qué necesitamos mixtures?}
+\begin{frame}{¿Por qué no basta una sola MVN? (puente a mixtures)}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item Una MVN modela una sola “nube” elíptica.
-  \item Si hay multimodalidad/estructura de clusters, una sola MVN es rígida.
-  \item Idea: \key{mixture model} = promedio ponderado de componentes.
+  \item Una MVN = una sola “nube elíptica”.
+  \item En Iris, distintas especies sugieren \key{más de una nube} (multimodalidad).
+  \item Solución: \key{mezcla} = suma ponderada de varias MVNs.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Gaussian mixture models (GMM): mezcla de MVNs}
+\begin{frame}{GMM: varias elipses para explicar una nube compleja}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
   \item Modelo:
@@ -361,19 +414,20 @@
     p(x)=\sum_{k=1}^K \pi_k\,\mathcal{N}(x\mid \mu_k,\Sigma_k),
     \qquad \sum_k\pi_k=1,\; \pi_k\ge 0.
   \]
-  \item En 2D, cada componente induce una elipse; el mixto suma “nubes”.
-  \item En el lab, ajustamos un GMM y \key{leemos} \(\pi_k,\mu_k,\Sigma_k\).
+  \item En 2D, cada componente induce una elipse; el modelo suma “nubes”.
+  \item Interpretación: \(\pi_k\) (peso), \(\mu_k\) (centro), \(\Sigma_k\) (forma).
+  \item Conexión: “cercanía” a cada componente se relaciona con Mahalanobis y su log-likelihood.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Resumen y takeaways}
+\begin{frame}{Cierre: qué te llevas de Week03}
 \temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Covarianza} describe escala + dependencia lineal; \key{correlación} estandariza para comparar.
-  \item \(\rho=0\) no garantiza independencia; correlación no es causalidad (cuidado con confusores).
-  \item MVN \(\mathcal{N}(\mu,\Sigma)\) + Mahalanobis describe geometría.
-  \item \key{Condicionamiento} en MVN es cerrado y habilita \key{imputación}.
-  \item GMM extiende a multimodalidad.
+  \item \(\hat{\Sigma}\) conserva escala; \(\hat{R}\) estandariza para comparar dependencias.
+  \item Interpretación cuidadosa: \(\rho=0\not\Rightarrow\) independencia; correlación \(\not\Rightarrow\) causalidad; cuidado con Simpson.
+  \item MVN + \(\Sigma\) da geometría; Mahalanobis mide “rareza” bajo esa geometría.
+  \item Condicionamiento MVN es cerrado \(\Rightarrow\) imputación como \(\E[X_m\mid X_o]\).
+  \item Si hay varias nubes, GMM (mezcla de elipses) es una extensión natural.
 \end{itemize}
 \end{frame}
 
@@ -382,25 +436,25 @@
 % =========================================================
 \section[Lab NumPy]{Lab NumPy\label{sec:labnumpy}}
 
-\begin{frame}{Lab NumPy — objetivos (qué debes lograr)}
+\begin{frame}{Lab NumPy — objetivo general}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 \begin{itemize}
-  \item \key{Condicionamiento:} implementar \(\mu_{b\mid a}\) y (opcional) \(\Sigma_{b\mid a}\) para una MVN particionada.
-  \item \key{Imputación:} tratar valores faltantes como \(x_b\) y rellenar con \(\mu_{b\mid a}\).
-  \item \key{Evaluación:} calcular MSE solo en valores ocultados y compararlo con un baseline.
-  \item \key{Reproducibilidad:} semilla fija; reporta \(N\) y porcentaje de faltantes.
+  \item Implementar la \key{media condicional} de una MVN por bloques (la receta de Teoría).
+  \item Aplicarla a \key{imputación} (p.\,ej. Iris: ocultar una columna y recuperarla).
+  \item Evaluar sin engañarse: MSE \key{solo} en valores ocultados + baseline.
+  \item Reproducibilidad: semilla fija, reporta \(N\) y \% faltantes.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Lab NumPy — notación y shapes (para no perderse)}
+\begin{frame}{Lab NumPy — notación y shapes (traducción Teoría \(\rightarrow\) código)}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 \small
 \begin{itemize}
   \item \key{\texttt{mu (D,)}}: vector de medias; \texttt{mu[i]} = media de la variable \(i\).
   \item \key{\texttt{Sigma (D,D)}}: covarianza; \texttt{Sigma[i,j]} = cov(\(X_i,X_j\)).
-  \item \key{\texttt{idx\_a / idx\_b}}: índices de variables observadas / faltantes.
-  \item \key{\texttt{x\_a}}: valores observados de una fila (shape \texttt{(len(idx\_a),)}).
-  \item Objetivo por fila: \(\mu_{b\mid a}=\mu_b+\Sigma_{ba}\Sigma_{aa}^{-1}(x_a-\mu_a)\).
+  \item \key{\texttt{idx\_a / idx\_b}}: índices de observado/faltante (en Iris, \(D=4\) y puedes ocultar “petal width”). 
+  \item \key{\texttt{x\_a}}: valores observados de una fila; es el “\(a\)” numérico de esa observación.
+  \item Fórmula por fila (media condicional): \(\mu_{b\mid a}=\mu_b+\Sigma_{ba}\Sigma_{aa}^{-1}(x_a-\mu_a)\).
 \end{itemize}
 \end{frame}
 
@@ -424,7 +478,7 @@ S_bb = Sigma[np.ix_(idx_b, idx_b)]    # (Db,Db)
 \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]{Lab NumPy — Pseudocódigo 2: media condicional e imputación}
+\begin{frame}[fragile]{Lab NumPy — Pseudocódigo 2: media condicional \(\rightarrow\) imputación}
 \temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
 \begin{verbatim}
 # Precompute una vez (fuera del loop por filas):
@@ -471,27 +525,27 @@ mse = mean( (X_true[mask] - X_imputed[mask])**2 )
 % =========================================================
 \section[Lab sklearn]{Lab sklearn\label{sec:labsklearn}}
 
-\begin{frame}{Lab sklearn — objetivos (qué debes lograr)}
+\begin{frame}{Lab sklearn — objetivo general}
 \temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
 \begin{itemize}
-  \item \key{Ajustar} un GMM en 2D (elige \(K\) y controla reproducibilidad).
-  \item \key{Leer parámetros} aprendidos: pesos, medias y covarianzas.
-  \item \key{Visualizar:} puntos coloreados por componente + elipses (una por componente).
-  \item \key{Interpretar:} 2--3 frases sobre qué representa cada componente.
+  \item Ajustar un \key{GMM} en 2D (elige \(K\), fija semilla).
+  \item Leer parámetros: pesos, medias y covarianzas \(\Rightarrow\) “varias elipses”.
+  \item Visualizar: puntos + elipses por componente.
+  \item Interpretar: 2--3 frases (¿qué parte de la nube captura cada componente?).
 \end{itemize}
 \end{frame}
 
-\begin{frame}{GMM (recordatorio): qué significa cada parámetro}
+\begin{frame}{GMM: cómo interpretar \(\pi_k,\mu_k,\Sigma_k\)}
 \temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
 \begin{itemize}
   \item \(\pi_k\): proporción de datos que “explica” el componente \(k\).
   \item \(\mu_k\): centro del componente.
   \item \(\Sigma_k\): forma/orientación (elipse) del componente.
-  \item \key{Pregunta guía:} ¿el componente captura un “cluster” real o sobreajusta ruido?
+  \item \key{Pregunta guía:} ¿el componente captura estructura real o está “partiendo” artificialmente una sola nube?
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Demo visual (dummy): GMM en 2D}
+\begin{frame}{GMM en 2D: visualización (puntos + elipses)}
 \temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
 \centering
 \includegraphics[width=0.82\linewidth,height=0.52\textheight,keepaspectratio]{week03_gmm_2d.png}
@@ -499,11 +553,12 @@ mse = mean( (X_true[mask] - X_imputed[mask])**2 )
 
 \small
 \begin{itemize}
-  \item Elipses = covarianzas por componente; colores = componente más probable.
+  \item Elipses = covarianza por componente; colores = componente más probable.
+  \item Lectura: cada elipse es una “nube” gaussiana; el mixto suma varias nubes.
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Lab sklearn — Checklist mínimo}
+\begin{frame}[fragile]{Lab sklearn — Checklist (mínimo indispensable)}
 \temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
 \begin{verbatim}
 # INPUT:
@@ -525,12 +580,12 @@ mse = mean( (X_true[mask] - X_imputed[mask])**2 )
 % =========================================================
 \section[Entregable]{Entregable\label{sec:entregable}}
 
-\begin{frame}{Entregable — qué debes entregar}
+\begin{frame}{Entregable — qué se evalúa}
 \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
 \begin{itemize}
-  \item \key{Notebook 1 (NumPy):} condicionamiento + imputación + MSE (con baseline).
-  \item \key{Notebook 2 (sklearn):} GMM 2D + parámetros + visualización.
-  \item \key{Reproducible:} semilla, versión de librerías, y una breve conclusión por notebook.
+  \item \key{Notebook 1 (NumPy):} condicionamiento por bloques \(\rightarrow\) imputación \(\rightarrow\) MSE (con baseline).
+  \item \key{Notebook 2 (sklearn):} GMM 2D \(\rightarrow\) parámetros \(\rightarrow\) visualización + interpretación breve.
+  \item \key{Reproducible:} semilla, \(N\), \% faltantes (si aplica), y una conclusión corta por notebook.
 \end{itemize}
 \end{frame}
 
