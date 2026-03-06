@@ -1,0 +1,847 @@
+% slides/week05_decision_theory_evaluation.tex
+% =========================
+% Metadata
+% =========================
+\title[Semana 5: Decision theory + evaluación]{Semana 5 — Decision theory y evaluación de modelos}
+\subtitle{De probabilidades a decisiones: riesgo esperado, costos asimétricos, umbral \(\rightarrow\) matriz de confusión, ROC/PR, AUC \(\rightarrow\) validación cruzada}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+%\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 5}
+
+% =========================
+% Helpers (avoid redefinition if provided by theme/macros)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+
+% "Dónde vamos en el temario" helper.
+% Usage: \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+\providecommand{\temariobar}[4]{%
+% (Opción A) Para ahorrar espacio, el bloque actual se indica en el pie
+% usando \insertsectionhead. Este macro se deja como no-op para no tener
+% que borrarlo de todos los frames.
+}
+
+% =========================================================
+% Indicador del bloque actual (Teoría / Lab / Entregable) en el pie
+% =========================================================
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Auto-outline at each section start (shows current block) - Week 5 version
+\AtBeginSection[]{
+  \begin{frame}{Semana 5 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+  \end{itemize}
+  \end{columns}
+  \end{frame}
+}
+
+% =========================================================
+% PART: WEEK 5
+% =========================================================
+\part{Semana 5}
+
+% =========================================================
+% TITLE
+% =========================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% LECTURAS SUGERIDAS
+% =========================================================
+\begin{frame}{Lecturas sugeridas (para estos temas)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Capítulo 5 — Decision Theory}
+  \begin{itemize}
+    \item \key{5.1} Bayesian decision theory
+    \begin{itemize}
+      \item \key{5.1.1} Basics (acciones, estados, pérdida, riesgo)
+      \item \key{5.1.2} Classification problems (incluye costos asimétricos y reject)
+      \item \key{5.1.3} ROC curves
+      \item \key{5.1.4} Precision-recall curves
+      \item \key{5.1.5} Regression problems (repaso de pérdidas)
+      \item \key{5.1.6} Probabilistic prediction problems (log-loss, Brier)
+    \end{itemize}
+    \item \key{5.4} Empirical risk minimization (vista desde teoría estadística)
+  \end{itemize}
+  \item \key{Capítulo 4 — Statistics}
+  \begin{itemize}
+    \item \key{4.5.4} Picking the regularizer using a validation set
+    \item \key{4.5.5} Cross-validation
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% TEMARIO MAP
+% =========================================================
+\begin{frame}{Temario de la Semana 5 (qué cubrimos hoy)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \textbf{Teoría (PML)}
+  \begin{itemize}\small
+    \item \key{1) Decision theory:} acciones, estados, pérdida, riesgo esperado \hfill \key{(5.1.1)}
+    \item \key{2) Clasificación:} pérdida \(0\text{-}1\), regla MAP y matriz de costos \hfill \key{(5.1.2)}
+    \item \key{3) Costos asimétricos:} cómo cambian los umbrales de decisión \hfill \key{(5.1.2.2)}
+    \item \key{4) Métricas:} matriz de confusión \(\rightarrow\) precision/recall, TPR/FPR, specificity \hfill \key{(5.1.3–5.1.4)}
+    \item \key{5) Curvas ROC/PR y AUC:} interpretación y efecto del desbalance \hfill \key{(5.1.3–5.1.4)}
+    \item \key{6) Validación y CV:} riesgo empírico vs poblacional, K-fold \hfill \key{(1.2.3, 4.5.4–4.5.5, 5.4.3)}
+  \end{itemize}
+  \item \textbf{Lab NumPy}
+  \begin{itemize}\small
+    \item Construir matrices de confusión, TPR/FPR y precision/recall desde \(\{y,s\}\)
+    \item Generar curvas ROC/PR y calcular AUC / PR-AUC manualmente
+    \item Elegir umbral óptimo en función de costos asimétricos
+  \end{itemize}
+  \item \textbf{Lab sklearn}
+  \begin{itemize}\small
+    \item Pipeline de evaluación con \texttt{StratifiedKFold} (práctica externa)
+    \item \texttt{confusion\_matrix}, \texttt{roc\_curve}, \texttt{precision\_recall\_curve}
+    \item Reportar ROC-AUC, PR-AUC y métricas por fold en una tabla
+  \end{itemize}
+  \item \textbf{Entregable}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Hilo conductor: de “ajustar” a “decidir y evaluar”}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Semana 4: vimos \key{MLE/ERM} como \(\min_\theta \hat{R}(\theta)\) (ajustar parámetros al train).
+  \item Semana 5: suponemos que ya tenemos \(p(y\mid x)\) o scores, y ahora toca:
+  \begin{itemize}
+    \item \key{(a) Decidir:} traducir probabilidades en acciones, usando \term{pérdidas/costos}.
+    \item \key{(b) Evaluar:} estimar qué tan bien funcionará el modelo fuera de la muestra.
+  \end{itemize}
+  \item \key{Idea central:} \term{decision theory} \(+\) \term{evaluación} = puente entre modelos probabilísticos y problemas reales.
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: TEORÍA
+% =========================================================
+\section[Teoría]{Teoría\label{sec:teoria}}
+
+\begin{frame}{Decision theory: ingredientes básicos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Estados del mundo} \(h\in\mathcal{H}\): clase verdadera, valor real, etc.
+  \item \key{Acciones} \(a\in\mathcal{A}\): predecir una clase, un número, dar/no dar un tratamiento, elegir un modelo, etc.
+  \item \key{Pérdida/costo} \(\ell(h,a)\): qué tan “mala” es la acción \(a\) si la realidad es \(h\). \hfill \key{(5.1.1)}
+  \item \key{Riesgo posterior} dado evidencia \(x\):
+  \[
+    \rho(a\mid x)=\mathbb{E}_{p(h\mid x)}[\ell(h,a)].
+  \]
+  \item \key{Regla de decisión Bayesiana}:
+  \[
+    \pi^*(x)=\arg\min_{a\in\mathcal{A}} \rho(a\mid x).
+  \]
+\item \key{Ejemplo mental}: médico que decide entre “no tratar” o “dar fármaco caro con efectos secundarios” a un paciente que puede (o no) tener COVID-19.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Decision theory: ejemplo COVID-19 (tabla de pérdidas)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \key{Estados} \(h\in\mathcal{H}\): combinación de
+  \begin{itemize}
+    \item edad (joven vs viejo),
+    \item estado de enfermedad (COVID-19 vs no COVID-19).
+  \end{itemize}
+  \item \key{Acciones} \(a\in\mathcal{A}\): \(\{\)\term{Nothing} (no tratar), \term{Drugs} (dar fármaco)\(\}\).
+  \item Usamos \term{QALYs} (quality-adjusted life years) como unidad de costo/beneficio:
+  \begin{itemize}\small
+    \item joven: 60 QALYs esperados si se salva;
+    \item viejo: 10 QALYs esperados si se salva;
+    \item el fármaco “cuesta” 8 QALYs (dolor, efectos secundarios).
+  \end{itemize}
+  \item \key{QALY} (\term{quality-adjusted life year}) \(\approx\) “un año de vida en perfecta salud”; años con peor salud aportan menos de 1 QALY.
+\end{itemize}
+
+\vspace{-0.6em}
+\centering
+\begin{tabular}{lcc}
+  \toprule
+  \textbf{State} & \textbf{Nothing} & \textbf{Drugs} \\
+  \midrule
+  No COVID-19, young  & 0  & 8 \\
+  COVID-19, young     & 60 & 8 \\
+  No COVID-19, old    & 0  & 8 \\
+  COVID-19, old       & 10 & 8 \\
+  \bottomrule
+\end{tabular}
+
+\end{frame}
+
+\begin{frame}{Decision theory: cómo leer la tabla de pérdidas}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item La tabla no muestra los QALYs que la persona \emph{tiene}, sino cuántos QALYs \textbf{pierde} por la combinación estado/acción.
+  \item Fila “No COVID-19, young”:
+  \begin{itemize}\small
+    \item \textbf{Nothing = 0}: el joven sano tiene muchos QALYs de vida potencial, pero la decisión de no tratar \emph{no le quita ninguno}.
+    \item \textbf{Drugs = 8}: tratarlo innecesariamente le hace perder 8 QALYs (efectos secundarios, sufrimiento, secuelas).
+  \end{itemize}
+  \item Fila “COVID-19, young”:
+  \begin{itemize}\small
+    \item \textbf{Nothing = 60}: si no se trata y muere, se pierden los 60 QALYs que habría tenido.
+    \item \textbf{Drugs = 8}: el tratamiento le salva la vida pero “cuesta” 8 QALYs de calidad.
+  \end{itemize}
+  \item Igual razonamiento para el paciente viejo con COVID-19 (10 vs 8 QALYs de pérdida).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Riesgo esperado y política óptima (ejemplo COVID-19)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Dado lo que observamos \(x\) (p.\,ej. resultado del test y edad), el \key{riesgo} de una acción \(a\) es la pérdida esperada:
+  \[
+    \rho(a\mid x) = \mathbb{E}[\ell(h,a)\mid x] = \sum_{h\in\mathcal{H}} \ell(h,a)\,p(h\mid x).
+  \]
+  \item En el ejemplo, una acción es \(a=\textbf{Nothing}\) (\emph{no hacer nada}). Llamamos \key{cost-noop} al riesgo de esa acción:
+  \[
+    \text{cost-noop}(x) = \rho(\text{Nothing}\mid x).
+  \]
+  \item La \key{política óptima} elige, para cada \(x\), la acción con menor riesgo:
+  \[
+    \pi^*(x) = \arg\min_{a\in\mathcal{A}} \rho(a\mid x).
+  \]
+  \item Los \key{inputs} del ejemplo son: \texttt{test} (negativo/positivo), \texttt{age} (joven/viejo) y \(p(\text{COVID}\mid x)\). En la siguiente slide veremos cómo se calcula cost-noop; al final tendremos la tabla con la decisión óptima.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo COVID-19: cálculo de \texttt{cost-noop} (fórmula)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Por definición, el cost-noop es el riesgo de la acción ``no hacer nada'':
+  \[
+    \text{cost-noop}(x) = \mathbb{E}[\ell(h,\text{Nothing})\mid x]
+    = \sum_h \ell(h,\text{Nothing})\,p(h\mid x).
+  \]
+  \item \textbf{Paciente joven}: de la tabla de pérdidas, \(\ell(\text{No COVID},\text{young},\text{Nothing})=0\) y \(\ell(\text{COVID},\text{young},\text{Nothing})=60\). Entonces
+  \[
+    \text{cost-noop} = 0\cdot p(\text{No COVID}\mid x) + 60\cdot p(\text{COVID}\mid x)
+    = 60\,p(\text{COVID}\mid x).
+  \]
+  \item \textbf{Paciente mayor}: \(\ell(\text{No COVID},\text{old},\text{Nothing})=0\), \(\ell(\text{COVID},\text{old},\text{Nothing})=10\), luego
+  \[
+    \text{cost-noop} = 10\,p(\text{COVID}\mid x).
+  \]
+  \item Los valores de la tabla se obtienen sustituyendo \(p(\text{COVID}\mid x)\) por las probabilidades que da el test (siguiente slide).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo COVID-19: \texttt{cost-noop} (valores numéricos)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Con las probabilidades del test: \(p(\text{COVID}\mid \text{test}=0)\approx 0.014\), \(p(\text{COVID}\mid \text{test}=1)\approx 0.7955\).
+  \item Sustituyendo en las fórmulas anteriores:
+  \begin{itemize}\small
+    \item \textbf{Test negativo}: joven \(60\times 0.014 = 0.84\); mayor \(10\times 0.014 = 0.14\).
+    \item \textbf{Test positivo}: joven \(60\times 0.7955 = 47.73\); mayor \(10\times 0.7955 = 7.95\).
+  \end{itemize}
+\end{itemize}
+\vspace{0.3em}
+\centering
+\begin{tabular}{cccccc}
+  \toprule
+  test & age & pr(covid) & cost-noop & cost-drugs & action \\
+  \midrule
+  0 & 0 & 0.01 & 0.84  & 8.00 & 0 \\
+  0 & 1 & 0.01 & 0.14  & 8.00 & 0 \\
+  1 & 0 & 0.80 & 47.73 & 8.00 & 1 \\
+  1 & 1 & 0.80 & 7.95  & 8.00 & 0 \\
+  \bottomrule
+\end{tabular}
+\vspace{0.4em}
+\small
+\begin{itemize}
+  \item \key{Comparación}: \(\text{cost-drugs}=8\) siempre. Si cost-noop \(<8\) conviene no tratar (action=0); si cost-noop \(>8\), tratar (action=1). Por eso, con test positivo y paciente joven, la política óptima es tratar; con test positivo y mayor, no tratar (7.95 y 8 son muy cercanos).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{De pérdida a utilidad: el mismo principio}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item En muchos textos se usa \key{utilidad} \(U(h,a)\) en vez de pérdida \(\ell(h,a)\).
+  \item Relación simple: \(U(h,a)=-\ell(h,a)\).
+  \item \key{Máxima utilidad esperada}:
+  \[
+    \pi^*(x)=\arg\max_{a\in\mathcal{A}} \mathbb{E}_{p(h\mid x)}[U(h,a)].
+  \]
+  \item En ML solemos pensar en \key{minimizar pérdida promedio} (riesgo) \(\leftrightarrow\) \key{maximizar utilidad esperada}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Clasificación binaria con pérdida \(0\text{-}1\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Estados y acciones son las clases: \(\mathcal{H}=\mathcal{A}=\{0,1\}\). \hfill \key{(5.1.2.1)}
+  \item \key{Pérdida \(0\text{-}1\)}:
+  \[
+    \ell_{0/1}(y^*,\hat{y}) = \mathbf{1}[y^*\neq \hat{y}].
+  \]
+  \item Riesgo posterior de predecir \(\hat{y}\):
+  \[
+    \rho(\hat{y}\mid x) = 1 - p(y^*=\hat{y}\mid x).
+  \]
+  \item \key{Regla óptima}: elegir la clase más probable (MAP):
+  \[
+    \hat{y}(x) = \arg\max_{y\in\{0,1\}} p(y\mid x).
+  \]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Costos asimétricos en binario: matriz de pérdida}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item En muchos problemas, \key{no todos los errores cuestan igual}.
+  \item Matriz de pérdida general:
+  \[
+  \ell(y^*,\hat{y}) =
+  \begin{pmatrix}
+    \ell_{00} & \ell_{01} \\
+    \ell_{10} & \ell_{11}
+  \end{pmatrix},
+  \]
+  donde filas = verdad, columnas = predicción. \hfill \key{(5.1.2.2)}
+  \item Ejemplo clásico: detección de enfermedad
+  \begin{itemize}
+    \item FP (decir “enfermo” cuando está sano) = costo moderado.
+    \item FN (decir “sano” cuando está enfermo) = costo muy alto.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Costos asimétricos \(\Rightarrow\) umbral distinto de 0.5}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Sea \(p_1 = p(y^*=1\mid x)\), \(p_0 = 1-p_1\), donde \(y^*\) es la \key{etiqueta verdadera} (ground truth) y \(\hat{y}\) la predicción.
+  \item Así, \(p_1\) = probabilidad de que la clase real sea 1 dado \(x\); \(p_0\) = probabilidad de que sea 0.
+  \item Riesgo de predecir \(\hat{y}=1\):
+  \[
+    \rho(1\mid x) = \ell_{01}p_0 + \ell_{11}p_1.
+  \]
+  \item Riesgo de predecir \(\hat{y}=0\):
+  \[
+    \rho(0\mid x) = \ell_{00}p_0 + \ell_{10}p_1.
+  \]
+  \item Caso típico \(\ell_{00}=\ell_{11}=0\): predecir \(1\) si
+  \[
+    p_1 \ge \frac{\ell_{01}}{\ell_{01}+\ell_{10}}.
+  \]
+  \item Si un FN cuesta \(c\) veces más que un FP (\(\ell_{10}=c\,\ell_{01}\)):
+  \[
+    p_1 \ge \frac{1}{1+c}.
+  \]
+  \item \key{Ejemplo}: \(c=4\) \(\Rightarrow\) umbral \(1/5=0.2\) (somos mucho más “sensibles”).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Costos asimétricos: de dónde sale el umbral}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Con \(\ell_{00}=\ell_{11}=0\) (acertar no cuesta), el riesgo de predecir 1 es
+    \(\rho(1\mid x)=\ell_{01}(1-p_1)\); el de predecir 0 es \(\rho(0\mid x)=\ell_{10}p_1\).
+  \item Predecimos 1 cuando \(\rho(1\mid x)\le\rho(0\mid x)\), es decir
+    \[
+      \ell_{01}(1-p_1) \le \ell_{10}p_1
+      \quad\Rightarrow\quad
+      p_1 \ge \frac{\ell_{01}}{\ell_{01}+\ell_{10}}.
+    \]
+  \item Si \(\ell_{10}=c\,\ell_{01}\) (un FN cuesta \(c\) veces un FP):
+    \[
+      p_1 \ge \frac{1}{1+c}.
+    \]
+  \item \key{Interpretación}: \(c=4\) \(\Rightarrow\) umbral 0.2. Bajamos el umbral respecto a 0.5 para ser más sensibles: preferimos más FP que perder casos reales (FN).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Costos asimétricos: umbral 0.5 vs umbral óptimo}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Con \key{umbral 0.5} (costos simétricos): predecimos 1 solo si \(p_1\ge 0.5\).
+  \item Con \key{umbral \(1/(1+c)\)} (FN cuesta \(c\) veces un FP): predecimos 1 si \(p_1\ge 1/(1+c)\).
+  \item Si \(c>1\), entonces \(1/(1+c)<0.5\): el umbral óptimo es \emph{menor} que 0.5.
+  \item \key{Ejemplo} \(c=4\): umbral \(0.2\). Un modelo que da \(p_1=0.3\):
+  \begin{itemize}\small
+    \item Con 0.5: predeciríamos 0 (``sano''); con 0.2: predecimos 1 (``tratar'').
+    \item Priorizamos no perder enfermos (menos FN), aunque haya más falsas alarmas (más FP).
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Costos asimétricos: ejemplo numérico completo}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Supongamos la siguiente matriz de pérdida para un clasificador médico:
+  \[
+  \ell(y^*,\hat{y}) =
+  \begin{pmatrix}
+    0 & 1 \\
+    5 & 0
+  \end{pmatrix},
+  \]
+  donde \(y^*=0\) = sano, \(y^*=1\) = enfermo.
+  \item Entonces un FN (enfermo etiquetado como sano) cuesta 5 veces un FP \(\Rightarrow c=5\).
+  \item El \key{umbral óptimo} según decision theory es
+  \[
+    p_1^\star = \frac{1}{1+c} = \frac{1}{6}\approx 0.17.
+  \]
+  \item \key{Interpretación práctica}:
+  \begin{itemize}
+    \item Si \(p(y=1\mid x)=0.20\): bajo \(0.5\) dirías “sano”; bajo \(0.17\) ya vale la pena tratar.
+    \item Si \(p(y=1\mid x)=0.05\): incluso con costos asimétricos, sigue por debajo del umbral \(0.17\).
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Matriz de confusión: conectar decisiones con conteos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{columns}[T,onlytextwidth]
+\column{0.52\textwidth}
+\begin{itemize}
+  \item Para un clasificador binario con umbral fijo:
+  \begin{itemize}
+    \item \key{TP}: verdaderos positivos
+    \item \key{FP}: falsos positivos
+    \item \key{TN}: verdaderos negativos
+    \item \key{FN}: falsos negativos
+  \end{itemize}
+  \item Tabla (forma de \key{Tabla 5.3}):
+  \[
+  \begin{array}{c|cc}
+        & \hat{y}=0 & \hat{y}=1 \\
+    \hline
+    y=0 & TN       & FP       \\
+    y=1 & FN       & TP
+  \end{array}
+  \]
+\end{itemize}
+\column{0.48\textwidth}
+\centering
+% (Opcional) figura de matriz de confusión; reutilizamos una tabla en lugar de imagen.
+\vspace{1em}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Derivar métricas desde la matriz de confusión}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Normalizando por filas (condicionado en la verdad): \hfill \key{(5.1.3.1, 5.1.3.2)}
+  \begin{itemize}
+    \item \key{TPR / recall / sensitivity}: \( \mathrm{TPR} = \dfrac{TP}{TP + FN} \).
+    \item \key{TNR / specificity}: \( \mathrm{TNR} = \dfrac{TN}{TN + FP} \).
+    \item \key{FPR}: \( \mathrm{FPR} = 1-\mathrm{TNR} = \dfrac{FP}{FP + TN} \).
+  \end{itemize}
+  \item Normalizando por columnas (condicionado en la predicción):
+  \begin{itemize}
+    \item \key{Precision / PPV}: \( \mathrm{Prec} = \dfrac{TP}{TP + FP} \).
+    \item \key{NPV}: \( \mathrm{NPV} = \dfrac{TN}{TN + FN} \).
+  \end{itemize}
+  \item \key{Idea}: todas las métricas que usamos (accuracy, recall, precision, etc.) son distintas “vistas” de la misma tabla.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Matriz de confusión: ejemplo numérico}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\centering
+\begin{tabular}{c|cc}
+      & \(\hat{y}=0\) & \(\hat{y}=1\) \\\hline
+  \(y=0\) & 50 & 10 \\
+  \(y=1\) & 5  & 35
+\end{tabular}
+
+\vspace{0.5em}
+\begin{itemize}\small
+  \item Total negativos verdaderos \(N=60\), positivos verdaderos \(P=40\).
+  \item Accuracy \(= (50+35)/100 = 0.85\).
+\end{itemize}
+\column{0.52\textwidth}
+\begin{itemize}\small
+  \item \key{Recall / TPR}:
+  \[
+    \mathrm{TPR} = \frac{TP}{TP+FN} = \frac{35}{35+5}=0.875.
+  \]
+  \item \key{FPR}:
+  \[
+    \mathrm{FPR} = \frac{FP}{FP+TN} = \frac{10}{10+50}\approx 0.167.
+  \]
+  \item \key{Precision}:
+  \[
+    \mathrm{Prec} = \frac{TP}{TP+FP} = \frac{35}{35+10}\approx 0.78.
+  \]
+  \item \key{NPV}:
+  \[
+    \mathrm{NPV} = \frac{TN}{TN+FN} = \frac{50}{50+5}\approx 0.91.
+  \]
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Curva ROC: barrer el umbral}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Si el modelo produce un \key{score} \(s(x)\) (p.\,ej. \(p(y=1\mid x)\)), definimos \(\hat{y}_\tau(x)=\mathbf{1}[s(x)\ge \tau]\).
+  \item Para cada \(\tau\) calculamos \(\mathrm{TPR}_\tau\) y \(\mathrm{FPR}_\tau\). \hfill \key{(5.1.3)}
+  \item La \key{curva ROC} grafica \(\mathrm{TPR}_\tau\) vs \(\mathrm{FPR}_\tau\) al variar \(\tau\in[0,1]\).
+  \item \key{Extremos}:
+  \begin{itemize}
+    \item \(\tau\to 0\): todo es positivo (\(\mathrm{TPR}\approx 1\), \(\mathrm{FPR}\approx 1\)).
+    \item \(\tau\to 1\): nadie es positivo (\(\mathrm{TPR}\approx 0\), \(\mathrm{FPR}\approx 0\)).
+  \end{itemize}
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.85\linewidth,height=0.42\textheight,keepaspectratio]{pr_curve.png}
+\end{frame}
+
+\begin{frame}{AUC, EER y lectura rápida de ROC}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \key{AUC} (Area Under the ROC Curve):
+  \begin{itemize}
+    \item \(\mathrm{AUC}=1\): clasificador perfecto (curva pegada a la esquina superior izquierda).
+    \item \(\mathrm{AUC}\approx 0.5\): como lanzar una moneda (diagonal).
+  \end{itemize}
+  \item \key{Equal Error Rate (EER)}:
+  \begin{itemize}
+    \item Punto donde \(\mathrm{FPR} = \mathrm{FNR} = 1-\mathrm{TPR}\). \hfill \key{(5.1.3.2)}
+    \item Se visualiza como intersección de la ROC con la diagonal descendente.
+  \end{itemize}
+  \item \key{Uso práctico}: ROC es útil cuando el costo de FP/FN no está fijado, y queremos comparar modelos “globalmente”.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Curva Precision–Recall (PR): cuando los positivos son raros}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Recordemos:
+  \[
+    \mathrm{Prec}_\tau = \frac{TP_\tau}{TP_\tau+FP_\tau},\qquad
+    \mathrm{Rec}_\tau = \frac{TP_\tau}{TP_\tau+FN_\tau}. \qquad \key{(5.1.4.1)}
+  \]
+  \item La \key{curva PR} grafica \(\mathrm{Prec}_\tau\) vs \(\mathrm{Rec}_\tau\) al variar \(\tau\).
+  \item Es especialmente informativa cuando hay \key{fuerte desbalance} (\(P\ll N\)), donde ROC puede verse “demasiado bonita”.
+  \item \key{PR-AUC / AP}: área (o average precision) bajo la curva PR. \hfill \key{(5.1.4.2)}
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.85\linewidth,height=0.42\textheight,keepaspectratio]{pr_curve.png}
+\end{frame}
+
+\begin{frame}{Mini-ejemplo ROC/PR con 5 ejemplos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Dataset pequeño (ordenado por score descendente):
+\end{itemize}
+\vspace{-0.3em}
+\[
+\begin{array}{c|ccccc}
+  n          & 1 & 2 & 3 & 4 & 5 \\\hline
+  y_n        & 1 & 0 & 1 & 0 & 1 \\
+  s_n        & 0.9 & 0.8 & 0.6 & 0.4 & 0.3
+\end{array}
+\]
+\vspace{-0.4em}
+\begin{itemize}\small
+  \item Hay \(P=3\) positivos, \(N=2\) negativos.
+  \item Si usamos \(\tau=0.75\):
+  \begin{itemize}
+    \item \(\hat{y}=(1,1,0,0,0)\) \(\Rightarrow TP=1, FP=1, TN=1, FN=2\).
+    \item \(\mathrm{TPR}=1/3\), \(\mathrm{FPR}=1/2\), \(\mathrm{Prec}=1/2\), \(\mathrm{Rec}=1/3\).
+  \end{itemize}
+  \item Si usamos \(\tau=0.5\):
+  \begin{itemize}
+    \item \(\hat{y}=(1,1,1,0,0)\) \(\Rightarrow TP=2, FP=1, TN=1, FN=1\).
+    \item \(\mathrm{TPR}=2/3\), \(\mathrm{FPR}=1/2\), \(\mathrm{Prec}=2/3\), \(\mathrm{Rec}=2/3\).
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Mini-ejemplo ROC/PR (cont.): puntos en las curvas}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Para el dataset anterior, podemos armar una pequeña tabla:
+\end{itemize}
+\vspace{-0.4em}
+\[
+\begin{array}{c|c|c|c|c}
+  \tau & \mathrm{TPR} & \mathrm{FPR} & \mathrm{Prec} & \mathrm{Rec} \\\hline
+  1.0   & 0   & 0   & -   & -   \\
+  0.75  & 1/3 & 1/2 & 1/2 & 1/3 \\
+  0.5   & 2/3 & 1/2 & 2/3 & 2/3 \\
+  0.25  & 1   & 1   & 3/5 & 1
+\end{array}
+\]
+\vspace{-0.4em}
+\begin{itemize}\small
+  \item \key{ROC}: puntos \((\mathrm{FPR},\mathrm{TPR}) = (0,0), (0.5,1/3), (0.5,2/3), (1,1)\).
+  \item \key{PR}: puntos \((\mathrm{Rec},\mathrm{Prec}) = (0,{-}), (1/3,1/2), (2/3,2/3), (1,3/5)\).
+  \item Con estos pocos puntos ya se puede:
+  \begin{itemize}
+    \item visualizar cómo el \key{umbral} barre las curvas;
+    \item aproximar AUC/PR-AUC con la regla del trapecio (como en el Lab NumPy).
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{F-scores: combinar precisión y recall en un solo número}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Para un umbral fijo (\(\mathrm{Prec},\mathrm{Rec}\)), el \key{F\(_\beta\)} se define como: \hfill \key{(5.1.4.3)}
+  \[
+    F_\beta = \frac{(1+\beta^2)\,\mathrm{Prec}\,\mathrm{Rec}}{\beta^2\,\mathrm{Prec} + \mathrm{Rec}}.
+  \]
+  \item Casos especiales:
+  \begin{itemize}
+    \item \(F_1\): media armónica de precisión y recall (pesa ambos por igual).
+    \item \(\beta>1\): da más peso a \term{recall} (importa más cubrir positivos).
+    \item \(\beta<1\): da más peso a \term{precision} (importa más evitar FP).
+  \end{itemize}
+  \item \key{Interpretación}: útil para seleccionar el umbral cuando tenemos una preferencia clara por precision o recall.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Desbalance de clases: ROC vs PR}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item ROC usa tasas \(\mathrm{TPR}\) y \(\mathrm{FPR}\) que \key{no cambian} si escalamos P y N manteniendo la proporción. \hfill \key{(5.1.3.3)}
+  \item En problemas muy desbalanceados, ROC puede verse buena aunque haya muchos FP absolutos.
+  \item PR (y F-score) sí son \key{sensibles} a la prevalencia:
+  \[
+    \mathrm{Prec} = \frac{\mathrm{TPR}}{\mathrm{TPR} + \frac{1}{r}\mathrm{FPR}},\quad
+    r=\frac{P}{N}. \qquad \key{(5.1.4.4)}
+  \]
+  \item \key{Regla práctica}:
+  \begin{itemize}
+    \item Clases balanceadas \(\rightarrow\) ROC-AUC es razonable.
+    \item Clases raras \(\rightarrow\) mira PR-AUC / AP y F-scores.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Validación: train / validation / test y leakage}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Separar los datos en:
+  \begin{itemize}
+    \item \key{Train}: ajustar parámetros \(\theta\).
+    \item \key{Validation}: escoger hiperparámetros (p.\,ej. \(\lambda\), arquitectura, umbral).
+    \item \key{Test}: estimar \(L(\theta^*;p^*)\) una sola vez. \hfill \key{(1.2.3, 4.5.4)}
+  \end{itemize}
+  \item \key{Leakage}: usar test (directa o indirectamente) para tomar decisiones de modelo/hiperparámetros.
+  \item \key{Consecuencia}: subestimar el error real; el modelo parece mejor de lo que realmente es.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cross-validation (CV): usar mejor los datos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Problema: con pocos datos, separar un validation set fijo puede ser caro.
+  \item \key{K-fold CV} (\(K\)-pliegues): \hfill \key{(4.5.5, 5.4.3)}
+  \begin{itemize}
+    \item Partimos train en \(K\) folds \(D_1,\dots,D_K\).
+    \item Para cada \(k\): entrenamos en \(D_{-k}\) y evaluamos en \(D_k\).
+    \item Promediamos la métrica (MSE, AUC, F1, etc.) sobre los \(K\) folds.
+  \end{itemize}
+  \item \key{Uso típico}: escoger hiperparámetros (p.\,ej. \(\lambda\) de regularización) y comparar modelos.
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.75\linewidth,height=0.32\textheight,keepaspectratio]{kfold_schematic.png}
+\end{frame}
+
+\begin{frame}{Cross-validation (CV): ejemplo numérico sencillo}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Supongamos \(K=3\) folds y medimos \key{accuracy} para un modelo:
+\end{itemize}
+\vspace{-0.4em}
+\[
+\begin{array}{c|c}
+  \text{Fold} & \text{Accuracy} \\\hline
+  1 & 0.82 \\
+  2 & 0.79 \\
+  3 & 0.87
+\end{array}
+\]
+\vspace{-0.4em}
+\begin{itemize}\small
+  \item \key{Promedio}: \(\bar{a} = (0.82+0.79+0.87)/3 \approx 0.83\).
+  \item \key{Desviación estándar} (muestral):
+  \[
+    s \approx \sqrt{\frac{(0.82-\bar{a})^2+(0.79-\bar{a})^2+(0.87-\bar{a})^2}{3-1}} \approx 0.04.
+  \]
+  \item Reporte típico: \(\text{accuracy CV} \approx 0.83 \pm 0.04\).
+  \item \key{Lectura}: el modelo parece razonablemente estable, pero hay variabilidad entre folds (dependiente del split).
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB NUMPY
+% =========================================================
+\section[Lab NumPy]{Lab NumPy\label{sec:labnumpy}}
+
+\begin{frame}{Lab NumPy — objetivo general}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Tomar \(\{y_n\in\{0,1\}, s_n\in[0,1]\}\) y construir:
+  \begin{itemize}
+    \item Matrices de confusión para distintos umbrales \(\tau\).
+    \item Curvas ROC y PR, con AUC / PR-AUC vía regla del trapecio.
+  \end{itemize}
+  \item Implementar una función de \key{riesgo empírico} con matriz de costos \(\ell_{ij}\) y buscar el \key{umbral óptimo}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — checklist (qué debe aparecer en tu notebook)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \key{Funciones básicas}:
+  \begin{itemize}
+    \item \texttt{confusion\_counts(y\_true, scores, tau)} \(\rightarrow\) TP, FP, TN, FN.
+    \item \texttt{metrics\_from\_confusion(\dots)} \(\rightarrow\) accuracy, TPR, FPR, precision, recall, F1.
+  \end{itemize}
+  \item \key{Curvas y áreas}:
+  \begin{itemize}
+    \item \texttt{roc\_curve\_manual} y \texttt{pr\_curve\_manual}.
+    \item \texttt{auc\_trapezoidal(x, y)} para ROC-AUC y PR-AUC.
+    \item Gráficos ROC y PR etiquetados (similar a las figuras del libro).
+  \end{itemize}
+  \item \key{Costos asimétricos}:
+  \begin{itemize}
+    \item Función \texttt{empirical\_risk\_tau(y, scores, tau, cost\_matrix)}.
+    \item Gráfico de \(\hat{L}(\tau)\) vs \(\tau\) para distintos cocientes de costos FP/FN.
+    \item Comparar el \(\tau\) que minimiza riesgo con el umbral \(1/(1+c)\) teórico.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB SKLEARN
+% =========================================================
+\section[Lab sklearn]{Lab sklearn\label{sec:labsklearn}}
+
+\begin{frame}{Lab sklearn — objetivo general}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}
+  \item Construir un pipeline mínimo de evaluación para clasificación binaria:
+  \begin{itemize}
+    \item \texttt{StratifiedKFold} para estimar métricas con CV (nota práctica: no aparece como tal en el libro).
+    \item \texttt{confusion\_matrix}, \texttt{roc\_curve}, \texttt{roc\_auc\_score}.
+    \item \texttt{precision\_recall\_curve}, \texttt{average\_precision\_score}.
+  \end{itemize}
+  \item Reportar métricas por fold y su promedio \(\pm\) desviación estándar.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab sklearn — checklist (estructura sugerida)}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\small
+\begin{itemize}
+  \item \key{Datos y modelo}:
+  \begin{itemize}
+    \item Dataset binario con cierto desbalance.
+    \item Modelo sencillo (p.\,ej. \texttt{LogisticRegression} o \texttt{RandomForestClassifier}).
+  \end{itemize}
+  \item \key{Cross-validation}:
+  \begin{itemize}
+    \item \texttt{StratifiedKFold(n\_splits=K, shuffle=True, random\_state=...)}.
+    \item Para cada fold: entrenar, obtener \texttt{predict\_proba} y \texttt{predict}.
+  \end{itemize}
+  \item \key{Métricas por fold}:
+  \begin{itemize}
+    \item Accuracy, ROC-AUC, PR-AUC (AP), F1.
+    \item Matriz de confusión.
+  \end{itemize}
+  \item \key{Tabla final}:
+  \begin{itemize}
+    \item Filas = folds, columnas = métricas.
+    \item Fila extra con promedio y desviación estándar.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: ENTREGABLE
+% =========================================================
+\section[Entregable]{Entregable\label{sec:entregable}}
+
+\begin{frame}{Entregable — qué se evalúa}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+\begin{itemize}
+  \item \key{Slides:} claridad en:
+  \begin{itemize}
+    \item definición de pérdida, riesgo esperado y reglas de decisión;
+    \item relación entre matriz de confusión, ROC/PR y métricas derivadas;
+    \item papel de train/validation/test y CV.
+  \end{itemize}
+  \item \key{Notebook NumPy:} construcción manual y correcta de métricas/curvas + selección de umbral con costos.
+  \item \key{Notebook sklearn:} pipeline de evaluación con CV + tabla de métricas bien interpretada.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre: tres ideas para llevarte}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{enumerate}
+  \item \key{Decision theory} formaliza “qué acción tomar” como \(\arg\min\) de riesgo esperado (pérdida \(+\) probabilidades). \hfill \key{(5.1.1–5.1.2)}
+  \item \key{Costos asimétricos} cambian el \key{umbral óptimo} y, por tanto, la región de operación en la ROC/PR. \hfill \key{(5.1.2.2, 5.1.3–5.1.4)}
+  \item \key{Evaluar bien} (train/val/test, CV) es clave para estimar el \key{riesgo poblacional} y no sobreestimar el modelo. \hfill \key{(1.2.3, 4.5.5, 5.4.3)}
+\end{enumerate}
+\end{frame}
+

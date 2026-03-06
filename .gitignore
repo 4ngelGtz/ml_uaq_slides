@@ -1,5 +1,6 @@
 # Python virtual env and caches
 .venv/
+.mplcache/
 __pycache__/
 *.py[cod]
 

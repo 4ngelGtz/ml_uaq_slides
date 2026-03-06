@@ -1,0 +1,368 @@
+% slides/week04_statistics_mle_erm.tex
+% =========================
+% Metadata
+% =========================
+\title[Semana 4: MLE / ERM]{Semana 4 — Estadística: MLE / ERM}
+\subtitle{Likelihood \(\rightarrow\) log-likelihood \(\rightarrow\) MLE en Bernoulli/Gaussiana \(\rightarrow\) ERM y pérdidas sustitutas}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+%\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 4}
+
+% =========================
+% Helpers (avoid redefinition if provided by theme/macros)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+
+% "Dónde vamos en el temario" helper.
+% Usage: \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+\providecommand{\temariobar}[4]{%
+% (Opción A) Para ahorrar espacio, el bloque actual se indica en el pie
+% usando \insertsectionhead. Este macro se deja como no-op para no tener
+% que borrarlo de todos los frames.
+}
+
+% =========================================================
+% Indicador del bloque actual (Teoría / Lab / Entregable) en el pie
+% =========================================================
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Auto-outline at each section start (shows current block) - Week 4 version
+\AtBeginSection[]{
+  \begin{frame}{Semana 4 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+  \end{itemize}
+  \end{columns}
+  \end{frame}
+}
+
+% =========================================================
+% PART: WEEK 4
+% =========================================================
+\part{Semana 4}
+
+% =========================================================
+% TITLE
+% =========================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% LECTURAS SUGERIDAS
+% =========================================================
+\begin{frame}{Lecturas sugeridas (para estos temas)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Capítulo 4 — Statistics}
+  \begin{itemize}
+    \item \key{4.1} Introduction
+    \item \key{4.2} Maximum likelihood estimation (MLE)
+    \begin{itemize}
+      \item \key{4.2.1} Definition
+      \item \key{4.2.2} Justification for MLE
+      \item \key{4.2.3} Bernoulli
+      \item \key{4.2.4} Categorical
+      \item \key{4.2.5} Univariate Gaussian
+      \item \key{4.2.6} Multivariate Gaussian
+      \item \key{4.2.7} Linear regression \key{(vista previa)}
+    \end{itemize}
+    \item \key{4.3} Empirical risk minimization (ERM)
+    \begin{itemize}
+      \item \key{4.3.1} Minimizing the misclassification rate
+      \item \key{4.3.2} Surrogate loss
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% TEMARIO MAP
+% =========================================================
+\begin{frame}{Temario de la Semana 4 (qué cubrimos hoy)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \textbf{Teoría (PML)}
+  \begin{itemize}\small
+    \item \key{1) Lenguaje correcto:} probabilidad vs likelihood \hfill \key{(4.1)}
+    \item \key{2) MLE como optimización:} producto \(\rightarrow\) suma (log) \(\rightarrow\) NLL \hfill \key{(4.2.1)}
+    \item \key{3) Por qué MLE tiene sentido:} “mejor ajuste” dentro del modelo \hfill \key{(4.2.2)}
+    \item \key{4) Ejemplos canónicos:} Bernoulli, Categórica, Gaussiana 1D (y MVN) \hfill \key{(4.2.3–4.2.6)}
+    \item \key{5) ERM:} riesgo empírico, \(0\text{-}1\) y pérdidas sustitutas \hfill \key{(4.3.1–4.3.2)}
+  \end{itemize}
+  \item \textbf{Lab NumPy}
+  \begin{itemize}\small
+    \item \key{Implementar} \(\ell(\theta)\), NLL y MLE analítico (Bernoulli + Gaussiana)
+    \item \key{Validar} con búsqueda por rejilla (grid) + checks numéricos
+  \end{itemize}
+  \item \textbf{Lab sklearn}
+  \begin{itemize}\small
+    \item \key{Equivalencias:} MLE \(\leftrightarrow\) minimizar log-loss (intercept-only)
+    \item \key{ERM:} ver \(0\text{-}1\) vs log-loss en un barrido de probabilidades
+  \end{itemize}
+  \item \textbf{Entregable}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Hilo conductor (dos preguntas “universales”)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Pregunta A (estadística):} dado un modelo \(p(x\mid\theta)\) y datos \(D\), ¿qué \(\theta\) los hace más plausibles? \hfill \key{(4.2)}
+  \item \key{Pregunta B (ML):} dado un modelo \(f_\theta\) y una pérdida \(\ell\), ¿qué \(\theta\) minimiza el error promedio en train? \hfill \key{(4.3)}
+  \item \key{Mensaje:} para modelos probabilísticos, \(\text{MLE} \equiv\) minimizar \(\text{NLL}\), que es un caso de ERM con log-loss.
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: TEORÍA
+% =========================================================
+\section[Teoría]{Teoría\label{sec:teoria}}
+
+\begin{frame}{Probabilidad vs likelihood (no es solo semántica)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Probabilidad/densidad:} \(p(x\mid\theta)\) como función de \(x\), con \(\theta\) fijo.
+  \item \key{Likelihood:} \(L(\theta; x)=p(x\mid\theta)\) como función de \(\theta\), con \(x\) fijo. \hfill \key{(4.1)}
+  \item \key{Error común:} interpretar \(L(\theta)\) como una distribución sobre \(\theta\) (no tiene por qué sumar/integrar 1).
+  \item Con datos iid: \(p(D\mid\theta)=\prod_{i=1}^n p(x_i\mid\theta)\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Definición de MLE: optimización sobre \(\theta\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Definición:}
+  \[
+    \hat{\theta}_{\mathrm{MLE}}=\argmax_\theta p(D\mid\theta). \qquad \key{(4.2.1)}
+  \]
+  \item Si los datos son iid:
+  \[
+    p(D\mid\theta)=\prod_{i=1}^n p(x_i\mid\theta).
+  \]
+  \item \key{Intuición:} elegir el \(\theta\) que hace “grandes” las probabilidades/densidades de los datos observados.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Log-likelihood y NLL: la forma computable}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Producto \(\rightarrow\) suma:
+  \[
+    \ell(\theta)=\log p(D\mid\theta)=\sum_{i=1}^n \log p(x_i\mid\theta). \qquad \key{(4.2.1)}
+  \]
+  \item \key{NLL (negative log-likelihood):} \(\mathrm{NLL}(\theta)=-\ell(\theta)\).
+  \item \key{Práctico:} evita underflow y es la forma típica de entrenamiento en ML.
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.42\textheight,keepaspectratio]{week04_underflow_loglik.png}
+\end{frame}
+
+\begin{frame}{Por qué MLE “tiene sentido” (una lectura útil)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Maximizar \(\ell(\theta)\) equivale a maximizar el promedio \(\frac{1}{n}\sum_i \log p(x_i\mid\theta)\). \hfill \key{(4.2.2)}
+  \item \key{Lectura:} elige el miembro de la familia \(p(\cdot\mid\theta)\) que mejor se ajusta a los datos (dentro del modelo).
+  \item \key{Advertencia:} si el modelo está mal especificado, MLE aun da el “mejor” \(\theta\) dentro de esa familia, pero no “arregla” el modelo.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo MLE 1: Bernoulli (resultado = frecuencia)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item Datos \(x_i\in\{0,1\}\), \(p(x\mid\pi)=\pi^x(1-\pi)^{1-x}\). \hfill \key{(4.2.3)}
+  \item Log-likelihood (sea \(S=\sum_i x_i\)):
+  \[
+    \ell(\pi)=S\log\pi+(n-S)\log(1-\pi).
+  \]
+  \item \key{MLE:} \(\hat{\pi}=\dfrac{S}{n}=\bar{x}\).
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.42\textheight,keepaspectratio]{week04_bernoulli_nll.png}
+\end{frame}
+
+\begin{frame}{Ejemplo MLE 2: Categórica (resultado = proporciones)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \(x\in\{1,\dots,K\}\), \(p(x=k\mid \bm{\pi})=\pi_k\), \(\sum_k \pi_k=1\). \hfill \key{(4.2.4)}
+  \item Con conteos \(n_k\): \(\ell(\bm{\pi})=\sum_{k=1}^K n_k \log \pi_k\).
+  \item \key{MLE:} \(\hat{\pi}_k=\dfrac{n_k}{n}\) (frecuencia por clase).
+  \item \key{Check:} \(\sum_k \hat{\pi}_k=1\). Si \(n_k=0\), evaluar \(\log \pi_k\) requiere cuidado numérico.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo MLE 3: Gaussiana 1D (media y varianza MLE)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \(x_i\sim \mathcal{N}(\mu,\sigma^2)\). \hfill \key{(4.2.5)}
+  \item NLL (ignorando constantes):
+  \[
+    \mathrm{NLL}(\mu,\sigma^2)=\frac{n}{2}\log\sigma^2+\frac{1}{2\sigma^2}\sum_{i=1}^n (x_i-\mu)^2.
+  \]
+  \item \key{MLE:} \(\hat{\mu}=\bar{x}\), \(\hat{\sigma}^2=\dfrac{1}{n}\sum_i (x_i-\bar{x})^2\).
+  \item Nota: el estimador “insesgado” usa \(1/(n-1)\), pero no es el MLE.
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.40\textheight,keepaspectratio]{week04_gaussian_nll_mu.png}
+\end{frame}
+
+\begin{frame}{MLE en MVN: misma idea, en \(\mathbb{R}^d\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \(\mathbf{x}_i\in\mathbb{R}^d\), \(\mathbf{x}_i\sim \mathcal{N}(\bm{\mu},\Sigma)\). \hfill \key{(4.2.6)}
+  \item \key{MLE:}
+  \[
+    \hat{\bm{\mu}}=\frac{1}{n}\sum_{i=1}^n \mathbf{x}_i,\qquad
+    \hat{\Sigma}=\frac{1}{n}\sum_{i=1}^n (\mathbf{x}_i-\hat{\bm{\mu}})(\mathbf{x}_i-\hat{\bm{\mu}})^\top.
+  \]
+  \item \key{Checks:} \(\hat{\Sigma}\succeq 0\); puede ser singular si \(n<d\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ERM: la versión ML de “ajustar parámetros”}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Riesgo poblacional:
+  \[
+    R(f)=\E[\ell(f(x),y)].
+  \]
+  \item Riesgo empírico:
+  \[
+    \hat{R}(f)=\frac{1}{n}\sum_{i=1}^n \ell\!\left(f(x_i),y_i\right). \qquad \key{(4.3)}
+  \]
+  \item \key{Mensaje:} en ML casi siempre minimizamos \(\hat{R}\) (lo computable).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Misclassification rate (\(0\text{-}1\)): por qué es difícil optimizar}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Pérdida \(0\text{-}1\): \(\ell_{0/1}(\hat{y},y)=\I[\hat{y}\neq y]\). \hfill \key{(4.3.1)}
+  \item Empírico: \(\hat{R}_{0/1}=\frac{1}{n}\sum_i \I[\hat{y}_i\neq y_i]\) (tasa de error).
+  \item \key{Problema:} no es suave; pequeños cambios en \(\theta\) pueden no cambiar \(\hat{y}\) \(\Rightarrow\) gradientes poco útiles.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Surrogate loss: hacer optimizable el problema}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Reemplazamos \(0\text{-}1\) por pérdidas que sean \key{optimizables} y correlacionen con acertar. \hfill \key{(4.3.2)}
+  \item Para modelos probabilísticos, surrogate natural = \key{log-loss}:
+  \[
+    \ell(\theta)= -\log p(y\mid x,\theta).
+  \]
+  \item \key{Puente:} minimizar NLL es ERM con log-loss:
+  \[
+    \min_\theta \frac{1}{n}\sum_i -\log p(y_i\mid x_i,\theta).
+  \]
+\end{itemize}
+
+\vspace{0.2em}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.42\textheight,keepaspectratio]{week04_01_vs_logloss.png}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB NUMPY
+% =========================================================
+\section[Lab NumPy]{Lab NumPy\label{sec:labnumpy}}
+
+\begin{frame}{Lab NumPy — objetivo general}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item Implementar \(\ell(\theta)\) y \(\mathrm{NLL}(\theta)\) para Bernoulli y Gaussiana. \hfill \key{(4.2.1)}
+  \item Calcular MLE \key{analítico} y validarlo con grid search. \hfill \key{(4.2.3, 4.2.5)}
+  \item Incluir checks: clipping, \(\sigma^2>0\), y comparación de mínimos.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — checklist (qué debe aparecer en tu notebook)}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\small
+\begin{itemize}
+  \item \key{Bernoulli:} \(\hat{\pi}=\bar{x}\), curva NLL(\(\pi\)) por rejilla, y mínimo en \(\hat{\pi}\). \hfill \key{(4.2.3)}
+  \item \key{Gaussiana 1D:} \(\hat{\mu}=\bar{x}\), \(\hat{\sigma}^2\) (MLE), y validación por rejilla. \hfill \key{(4.2.5)}
+  \item \key{Numerical hygiene:} evitar \(\log 0\), evitar \(\sigma^2\le 0\), usar NLL promedio para comparar.
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: LAB SKLEARN
+% =========================================================
+\section[Lab sklearn]{Lab sklearn\label{sec:labsklearn}}
+
+\begin{frame}{Lab sklearn — objetivo general}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}
+  \item Ver la equivalencia: MLE \(\leftrightarrow\) minimizar log-loss (ERM con surrogate). \hfill \key{(4.3.2)}
+  \item Caso simple: \key{logística intercept-only} \(\Rightarrow\) Bernoulli (probabilidad constante). \hfill \key{(4.2.3)}
+  \item Comparar \(0\text{-}1\) vs log-loss en un barrido de \(p\in(0,1)\). \hfill \key{(4.3.1–4.3.2)}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Logística intercept-only: la versión “ML” del Bernoulli}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\small
+\begin{itemize}
+  \item Si el modelo predice una probabilidad constante \(p\), el MLE Bernoulli es \(\hat{p}=\bar{y}\). \hfill \key{(4.2.3)}
+  \item En logística con solo intercept \(b\): \(p=\sigma(b)=\frac{1}{1+e^{-b}}\).
+  \item Relación: \(b=\log\frac{p}{1-p}\) (logit). Así, \( \hat{b}=\log\frac{\bar{y}}{1-\bar{y}}\).
+  \item \key{Check:} la probabilidad promedio predicha debe ser \(\approx \bar{y}\) (si no hay regularización fuerte).
+\end{itemize}
+\end{frame}
+
+% =========================================================
+% SECTION: ENTREGABLE
+% =========================================================
+\section[Entregable]{Entregable\label{sec:entregable}}
+
+\begin{frame}{Entregable — qué se evalúa}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+\begin{itemize}
+  \item \key{Slides:} comprensión conceptual (likelihood/log-likelihood/NLL, MLE, ERM).
+  \item \key{Notebook NumPy:} implementación de NLL + MLE analítico + validación por grid + checks.
+  \item \key{Notebook sklearn:} equivalencia log-loss/MLE (intercept-only) + comparación con \(0\text{-}1\).
+  \item \key{Reproducible:} semilla fija, outputs limpios, y 5–8 líneas de interpretación.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre: tres ideas para llevarte}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{enumerate}
+  \item \key{MLE} = elegir \(\theta\) que maximiza \(p(D\mid\theta)\) (mejor “explica” los datos). \hfill \key{(4.2)}
+  \item Trabajamos casi siempre con \key{log-likelihood/NLL} por estabilidad y porque suma pérdidas. \hfill \key{(4.2.1)}
+  \item \key{ERM} + \key{surrogates}: entrenar = minimizar un promedio de pérdidas; log-loss conecta directo con MLE. \hfill \key{(4.3)}
+\end{enumerate}
+\end{frame}
+
