@@ -379,7 +379,11 @@
   \item Predecimos 1 cuando \(\rho(1\mid x)\le\rho(0\mid x)\), es decir
     \[
       \ell_{01}(1-p_1) \le \ell_{10}p_1
-      \quad\Rightarrow\quad
+      \;\Longleftrightarrow\;
+      \ell_{01} - \ell_{01}p_1 \le \ell_{10}p_1
+      \;\Longleftrightarrow\;
+      \ell_{01} \le p_1(\ell_{01}+\ell_{10})
+      \;\Longleftrightarrow\;
       p_1 \ge \frac{\ell_{01}}{\ell_{01}+\ell_{10}}.
     \]
   \item Si \(\ell_{10}=c\,\ell_{01}\) (un FN cuesta \(c\) veces un FP):
