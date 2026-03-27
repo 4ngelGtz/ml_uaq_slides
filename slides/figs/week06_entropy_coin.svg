@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="260" viewBox="0 0 520 260">
+  <style>
+    .axis { stroke: #333; stroke-width: 2; }
+    .curve { fill: none; stroke: #2c7bb6; stroke-width: 3; }
+    .tick { stroke: #333; stroke-width: 1; }
+    .label { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: #222; }
+    .title { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: bold; fill: #111; }
+    .point { fill: #d7191c; }
+    .dashed { stroke-dasharray: 4 4; stroke: #777; stroke-width: 1.5; }
+  </style>
+
+  <!-- Title -->
+  <text x="260" y="24" text-anchor="middle" class="title">
+    Entropía de una moneda H(¸)
+  </text>
+
+  <!-- Axes -->
+  <line x1="60" y1="210" x2="470" y2="210" class="axis"/>
+  <line x1="60" y1="40" x2="60" y2="210" class="axis"/>
+
+  <!-- Axis labels -->
+  <text x="265" y="240" text-anchor="middle" class="label">¸ = P(cara)</text>
+  <text x="20" y="130" text-anchor="middle" class="label" transform="rotate(-90 20 130)">H(¸) [bits]</text>
+
+  <!-- X ticks -->
+  <line x1="60" y1="210" x2="60" y2="216" class="tick"/>
+  <text x="60" y="232" text-anchor="middle" class="label">0</text>
+
+  <line x1="265" y1="210" x2="265" y2="216" class="tick"/>
+  <text x="265" y="232" text-anchor="middle" class="label">0.5</text>
+
+  <line x1="470" y1="210" x2="470" y2="216" class="tick"/>
+  <text x="470" y="232" text-anchor="middle" class="label">1</text>
+
+  <!-- Y ticks -->
+  <line x1="54" y1="210" x2="60" y2="210" class="tick"/>
+  <text x="44" y="214" text-anchor="end" class="label">0</text>
+
+  <line x1="54" y1="60" x2="60" y2="60" class="tick"/>
+  <text x="44" y="64" text-anchor="end" class="label">1</text>
+
+  <!-- Parabolic-like entropy curve (pre-sampled) -->
+  <path class="curve" d="
+    M 60 210
+    C 120 150, 210 60, 265 60
+    C 320 60, 410 150, 470 210
+  "/>
+
+  <!-- Maximum point at ¸ = 0.5 -->
+  <circle cx="265" cy="60" r="4" class="point"/>
+  <line x1="265" y1="60" x2="265" y2="210" class="dashed"/>
+  <line x1="60" y1="60" x2="265" y2="60" class="dashed"/>
+
+  <text x="280" y="76" class="label">H(0.5) = 1 bit</text>
+  <text x="100" y="95" class="label">moneda justa</text>
+
+  <text x="120" y="190" class="label">casi segura</text>
+  <text x="380" y="190" class="label">casi segura</text>
+</svg>
+

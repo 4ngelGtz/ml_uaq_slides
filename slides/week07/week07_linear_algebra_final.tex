@@ -1,0 +1,908 @@
+% slides/week07/week07_linear_algebra_final.tex
+% Semana 7 — Linear Algebra (versión depurada)
+
+% =========================
+% Metadata
+% =========================
+\title[Semana 7: Álgebra lineal]{Semana 7 — Álgebra lineal para Machine Learning}
+\subtitle{Proyección, mínimos cuadrados, SVD, conditioning y PCA}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+\date{Semana 7}
+
+% =========================
+% Helpers (avoid redefinition if provided by theme/macros)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+
+% "Dónde vamos en el temario" helper.
+% Usage: \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+\providecommand{\temariobar}[4]{%
+% (Opción A) Para ahorrar espacio, el bloque actual se indica en el pie
+% usando \insertsectionhead. Este macro se deja como no-op para no tener
+% que borrarlo de todos los frames.
+}
+
+% =========================================================
+% Indicador del bloque actual (Teoría / Lab / Entregable) en el pie
+% =========================================================
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Auto-outline at each section start — debe redefinirse por semana (el hook es global en Beamer).
+\AtBeginSection[]{
+  \begin{frame}{Semana 7 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+  \end{itemize}
+  \end{columns}
+  \end{frame}
+}
+
+% =========================================================
+% PART: WEEK 7
+% =========================================================
+\part{Semana 7}
+
+% =========================================================
+% TITLE
+% =========================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Lecturas sugeridas y ruta matemática}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Cap. 7 — Linear Algebra}
+  \begin{itemize}\footnotesize
+    \item \key{7.1.2--7.1.4} Espacios vectoriales, normas, propiedades matriciales
+    \item \key{7.4} EVD de matrices simétricas y formas cuadráticas
+    \item \key{7.5} SVD, conexión con EVD, truncación y pseudoinversa
+    \item \key{7.6.2} QR
+    \item \key{7.7.3} Sistemas sobredeterminados y mínimos cuadrados
+  \end{itemize}
+  \item \key{Conexiones prácticas}
+  \begin{itemize}\footnotesize
+    \item \key{11.2} Regresión lineal por mínimos cuadrados
+    \item \key{20.1} PCA y su derivación espectral
+  \end{itemize}
+\end{itemize}
+\vspace{0.3em}
+\begin{block}{Ruta de la semana}
+\centering
+\textbf{modelo lineal $\rightarrow$ proyección $\rightarrow$ mínimos cuadrados $\rightarrow$ conditioning y resolución estable $\rightarrow$ SVD $\rightarrow$ PCA}
+\end{block}
+\end{frame}
+
+\begin{frame}{Pregunta central de la semana}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Dado un vector $y\in\mathbb{R}^n$ y una matriz $X$, queremos responder cuatro preguntas:
+\begin{enumerate}\small
+  \item ¿Cuál es la mejor aproximación de $y$ dentro de $\mathrm{col}(X)$?
+  \item ¿Qué ecuación caracteriza esa solución?
+  \item ¿Cómo resolverla de forma estable cuando el problema está mal condicionado?
+  \item ¿Qué nos revela la SVD sobre rango, energía, truncación, pseudoinversa y PCA?
+\end{enumerate}
+\vspace{0.3em}
+\begin{block}{Mensaje}
+\centering
+\textbf{La geometría del modelo lineal y la estructura espectral de las matrices responden a la misma pregunta: cómo aproximar y representar información en subespacios.}
+\end{block}
+\end{frame}
+
+\section[Teoría]{Teoría\label{sec:teoria-w07-final}}
+
+\subsection{Modelo lineal, norma y proyección}
+
+\begin{frame}{El modelo lineal como subespacio}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Si $X=[x_1,\dots,x_p]\in\mathbb{R}^{n\times p}$, cualquier combinación lineal de sus columnas tiene la forma
+  \[
+    Xw = w_1x_1 + \cdots + w_p x_p.
+  \]
+  \item El conjunto de todas esas combinaciones es el \key{espacio columna}
+  \[
+    \mathrm{col}(X)=\{Xw:\; w\in\mathbb{R}^p\}.
+  \]
+  \item Un modelo lineal no puede producir cualquier vector en $\mathbb{R}^n$: solo vectores dentro de $\mathrm{col}(X)$.
+\end{itemize}
+\vspace{0.25em}
+\begin{block}{Idea central}
+\centering
+\textbf{Regresión lineal $=$ buscar el mejor vector posible dentro de $\mathrm{col}(X)$.}
+\end{block}
+\end{frame}
+
+\begin{frame}{Norma euclidiana y error cuadrático}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item La norma euclidiana de un vector es
+  \[
+    \|x\|_2 = \sqrt{x^\top x}.
+  \]
+  \item La distancia entre $y$ y una predicción $Xw$ es
+  \[
+    \|y-Xw\|_2.
+  \]
+  \item El problema de mínimos cuadrados se formula como
+  \[
+    \hat w = \arg\min_w \|y-Xw\|_2^2.
+  \]
+\end{itemize}
+\vspace{0.3em}
+\begin{block}{Lectura geométrica}
+\centering
+\textbf{Mínimos cuadrados es un problema de distancia mínima entre un vector y un subespacio.}
+\end{block}
+\end{frame}
+
+\begin{frame}{Proyección ortogonal sobre una recta}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.55\textwidth}
+\small
+Queremos proyectar $y$ sobre la dirección de $u$. Buscamos $a$ tal que $au$ minimice
+\[
+  \|y-au\|_2^2.
+\]
+\vspace{-0.35em}
+\begin{align*}
+  f(a) &= (y-au)^\top(y-au) = y^\top y - 2a\,u^\top y + a^2 u^\top u,\\
+  f'(a) &= -2u^\top y + 2a\,u^\top u = 0.
+\end{align*}
+Por tanto,
+\[
+  a = \frac{u^\top y}{u^\top u}
+  \Rightarrow
+  \mathrm{proj}_u(y)=\frac{u^\top y}{u^\top u}\,u.
+\]
+\begin{itemize}\footnotesize
+  \item El residual $r=y-\hat y$ satisface $u^\top r=0$: el error es ortogonal a la dirección usada para aproximar.
+\end{itemize}
+\end{column}
+\begin{column}{0.43\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_projection_line.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Mínimos cuadrados como proyección sobre $\mathrm{col}(X)$}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.55\textwidth}
+\small
+\[
+  \hat w=\arg\min_w \|y-Xw\|_2^2,
+  \quad
+  \hat y = X\hat w.
+\]
+\begin{itemize}\footnotesize
+  \item $\hat y$ es la \key{proyección ortogonal} de $y$ sobre $\mathrm{col}(X)$.
+  \item El residual $r=y-\hat y$ es ortogonal a todas las columnas de $X$.
+  \item Por tanto, $X^\top r = 0$.
+\end{itemize}
+\vspace{0.2em}
+{\scriptsize Esquema en $\mathbb{R}^3$: el plano representa $\mathrm{col}(X)$. En la práctica, el razonamiento vale en $\mathbb{R}^n$.}
+\end{column}
+\begin{column}{0.43\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_column_space_3d.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ecuaciones normales}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Como $r=y-X\hat w$ y $X^\top r=0$,
+\[
+  X^\top(y-X\hat w)=0
+  \qquad\Rightarrow\qquad
+  X^\top X\hat w = X^\top y.
+\]
+\vspace{0.2em}
+\begin{block}{Resultado}
+\centering
+\textbf{Las ecuaciones normales caracterizan algebraicamente la proyección ortogonal de $y$ sobre $\mathrm{col}(X)$.}
+\end{block}
+\vspace{0.2em}
+También se obtiene por gradiente:
+\[
+  J(w)=\|y-Xw\|_2^2
+  \quad\Rightarrow\quad
+  \nabla_w J(w) = -2X^\top y + 2X^\top Xw = 0.
+\]
+\end{frame}
+
+\begin{frame}{Matriz de proyección}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Si $X^\top X$ es invertible, entonces
+\[
+  \hat w=(X^\top X)^{-1}X^\top y,
+  \qquad
+  \hat y = X(X^\top X)^{-1}X^\top y.
+\]
+Definimos
+\[
+  P = X(X^\top X)^{-1}X^\top.
+\]
+Entonces
+\[
+  \hat y = Py.
+\]
+\vspace{0.15em}
+\begin{itemize}\small
+  \item $P^\top=P$ (simétrica).
+  \item $P^2=P$ (idempotente).
+\end{itemize}
+\begin{block}{Interpretación}
+\centering
+\textbf{$P$ es la matriz que proyecta ortogonalmente sobre $\mathrm{col}(X)$.}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo completo de mínimos cuadrados}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.55\textwidth}
+\footnotesize
+\[
+  X=\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix},
+  \quad
+  y=\begin{bmatrix}1\\2\\2\end{bmatrix}.
+\]
+\[
+  \hat w=\begin{bmatrix}7/6\\1/2\end{bmatrix},
+  \;
+  \hat y=\begin{bmatrix}7/6\\10/6\\13/6\end{bmatrix},
+  \;
+  r=y-\hat y = \frac{1}{6}\begin{bmatrix}-1\\2\\-1\end{bmatrix}.
+\]
+Se verifica que $X^\top r = 0$.
+\begin{block}{Lectura}
+\centering
+\footnotesize
+\textbf{La recta de regresión es la proyección ortogonal del vector de respuestas sobre el subespacio generado por las columnas de $X$.}
+\end{block}
+\end{column}
+\begin{column}{0.43\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_ls_scatter.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\subsection{Conditioning y resolución estable de LS}
+
+\begin{frame}{Conditioning: sensibilidad de la solución}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.54\textwidth}
+\small
+Un problema lineal está \key{mal condicionado} si pequeñas perturbaciones en la entrada producen grandes cambios en la solución.
+\vspace{0.15em}
+\[
+  \kappa(A)=\frac{\sigma_{\max}(A)}{\sigma_{\min}(A)}
+\]
+donde, en la norma 2:
+\begin{itemize}\footnotesize
+  \item $\sigma_{\max}(A)$ es el \textbf{mayor valor singular} de $A$;
+  \item $\sigma_{\min}(A)$ es el \textbf{menor valor singular no nulo} de $A$.
+  \item Los $\sigma_i$ miden cuánto \textbf{estira} o \textbf{comprime} la matriz en direcciones especiales.
+  \item Si $\sigma_{\min}(A)$ es muy pequeño, una dirección casi se colapsa y el error se amplifica.
+\end{itemize}
+\[
+  A=\begin{bmatrix}1&1\\1&1.0001\end{bmatrix}
+\]
+\end{column}
+\begin{column}{0.44\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_conditioning_ellipses.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Cómo resolver mínimos cuadrados de forma estable}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+Queremos resolver siempre la misma pregunta:
+\[
+  \min_w \|y-Xw\|_2^2.
+\]
+\vspace{-0.25em}
+\begin{enumerate}\footnotesize
+  \item \key{Ecuaciones normales}
+  \[
+    X^\top Xw = X^\top y
+  \]
+  excelentes para la intuición geométrica, pero pueden ser numéricamente delicadas.
+  \item \key{QR}
+  \[
+    X=QR
+  \]
+  evita formar $X^\top X$ y suele ser más estable.
+  \item \key{SVD}
+  \[
+    X=U\Sigma V^\top
+  \]
+  funciona incluso con rango deficiente y conduce naturalmente a la pseudoinversa.
+\end{enumerate}
+\vspace{-0.35em}
+\begin{block}{Mensaje}
+\centering
+\footnotesize
+\textbf{No son tres problemas distintos: son tres maneras de responder la misma pregunta de mínimos cuadrados.}
+\end{block}
+\end{frame}
+
+\subsection{SVD}
+
+\begin{frame}{La descomposición singular de una matriz}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definición}
+Para toda matriz real $A\in\mathbb{R}^{m\times n}$ existe una factorización
+\[
+  A = U\Sigma V^\top,
+\]
+donde $U\in\mathbb{R}^{m\times m}$ y $V\in\mathbb{R}^{n\times n}$ son ortogonales, y $\Sigma\in\mathbb{R}^{m\times n}$ es diagonal rectangular con
+\[
+  \sigma_1\ge \sigma_2\ge \cdots \ge 0.
+\]
+\end{block}
+\begin{itemize}\small
+  \item Las columnas de $U$ son los \textbf{vectores singulares izquierdos}.
+  \item Las columnas de $V$ son los \textbf{vectores singulares derechos}.
+  \item Los $\sigma_i$ son los \textbf{valores singulares}.
+\end{itemize}
+\begin{block}{Observación}
+\centering
+\textbf{La SVD siempre existe; la EVD no siempre existe, incluso para matrices cuadradas.}
+\end{block}
+\end{frame}
+
+\begin{frame}{Interpretación geométrica de la SVD}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.52\textwidth}
+\small
+La descomposición $A=U\Sigma V^\top$ se interpreta como tres pasos:
+\begin{enumerate}\footnotesize
+  \item $V^\top$: cambia de base en el espacio de entrada;
+  \item $\Sigma$: estira o comprime en direcciones ortogonales especiales;
+  \item $U$: rota o refleja en el espacio de salida.
+\end{enumerate}
+\begin{block}{Conclusión:}
+\centering
+\footnotesize
+\textbf{Toda matriz actúa como: rotar/reflejar $\rightarrow$ escalar $\rightarrow$ rotar/reflejar.}
+\end{block}
+\end{column}
+\begin{column}{0.46\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_circle_ellipse_general.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Conexión entre SVD y EVD}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Si
+\[
+  A=U\Sigma V^\top,
+\]
+entonces
+\[
+  A^\top A = V\Sigma^\top\Sigma V^\top,
+  \qquad
+  AA^\top = U\Sigma\Sigma^\top U^\top.
+\]
+\begin{itemize}\small
+  \item Las columnas de $V$ son eigenvectores de $A^\top A$.
+  \item Las columnas de $U$ son eigenvectores de $AA^\top$.
+  \item Los eigenvalores no nulos son
+  \[
+    \lambda_i = \sigma_i^2.
+  \]
+\end{itemize}
+\begin{block}{Caso especial}
+Si $A$ es simétrica y definida positiva, entonces la SVD coincide con la EVD:
+\[
+  A = U\Sigma U^\top.
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{¿Por qué las columnas de $V$ son eigenvectores de $A^\top A$?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\scriptsize
+\setlength{\abovedisplayskip}{2pt}
+\setlength{\belowdisplayskip}{2pt}
+\setlength{\abovedisplayshortskip}{1pt}
+\setlength{\belowdisplayshortskip}{1pt}
+\setlength{\itemsep}{0.1em}
+Partimos de la SVD $A = U \Sigma V^\top$. Entonces
+\[
+  A^\top A
+  = V \Sigma^\top U^\top U \Sigma V^\top
+  = V \Sigma^\top \Sigma V^\top.
+\]
+Sea $v_i$ la columna $i$-ésima de $V$. Como $V$ es ortogonal, $V^\top v_i = e_i$ (vector canónico). Por tanto
+\[
+  A^\top A\, v_i
+  = V \Sigma^\top \Sigma e_i
+  = V(\sigma_i^2 e_i)
+  = \sigma_i^2 v_i.
+\]
+\textbf{Conclusión:} $v_i$ es eigenvector de $A^\top A$ con eigenvalor $\sigma_i^2$.
+
+\textbf{Interpretación:}
+\begin{itemize}
+  \item $A^\top A$ actúa en el espacio de entrada.
+  \item Las direcciones especiales del espacio de entrada están dadas por las columnas de $V$.
+  \item Por eso $V$ aparece en la descomposición espectral de $A^\top A$.
+\end{itemize}
+\vspace{-0.2em}
+\begin{block}{Mensaje final}
+\centering
+Las columnas de $V$ diagonalizan a $A^\top A$, y sus eigenvalores son los cuadrados de los valores singulares.
+\end{block}
+\end{frame}
+
+\begin{frame}{Comprobación numérica: $\sigma_i^2 = \lambda_i(A^\top A)$}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\footnotesize
+\setlength{\abovedisplayskip}{4pt}
+\setlength{\belowdisplayskip}{4pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
+Sea
+\[
+A=
+\begin{bmatrix}
+1 & 2\\
+0 & 2\\
+2 & 0
+\end{bmatrix}.
+\]
+
+Entonces
+\[
+A^\top A=
+\begin{bmatrix}
+5 & 2\\
+2 & 8
+\end{bmatrix}.
+\]
+
+Sus eigenvalores son
+\[
+\lambda_1=9,\qquad \lambda_2=4.
+\]
+
+Luego, los valores singulares de \(A\) son
+\[
+\sigma_1=3,\qquad \sigma_2=2.
+\]
+
+Por tanto,
+\[
+\sigma_1^2=9=\lambda_1(A^\top A),\qquad
+\sigma_2^2=4=\lambda_2(A^\top A).
+\]
+\vspace{-0.2em}
+\begin{block}{Mensaje}
+\centering
+{\scriptsize Los valores singulares de \(A\) son la raíz cuadrada de los eigenvalores de \(A^\top A\).}
+\end{block}
+\end{frame}
+
+\begin{frame}{Energía, rango y truncación}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.53\textwidth}
+\footnotesize
+La SVD puede escribirse como suma de matrices de rango 1:
+\[
+  A = \sum_{i=1}^r \sigma_i u_i v_i^\top,
+\]
+donde $r=\mathrm{rank}(A)$.
+\vspace{-0.15em}
+\begin{itemize}\footnotesize
+  \setlength{\itemsep}{0.08em}
+  \item La energía total en norma de Frobenius es
+  \[
+    \|A\|_F^2 = \sum_{i=1}^r \sigma_i^2.
+  \]
+  \item La aproximación truncada de rango $k$ es
+  \[
+    A_k = \sum_{i=1}^k \sigma_i u_i v_i^\top.
+  \]
+  \item Los primeros valores singulares concentran la estructura principal de la matriz.
+\end{itemize}
+\end{column}
+\begin{column}{0.45\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.34\textheight,keepaspectratio]{week07_svd_scree.png}\\[0.08em]
+{\scriptsize Scree plot.}\\[0.12em]
+\includegraphics[width=\linewidth,height=0.34\textheight,keepaspectratio]{week07_svd_trunc.png}\\[0.06em]
+{\scriptsize Error de reconstrucción.}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo: compresión de imágenes con SVD}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+Una imagen en escala de grises puede representarse como una matriz
+\[
+X \in R^{m \times n}.
+\]
+
+Aplicamos la descomposición singular:
+\[
+X = U \Sigma V^T.
+\]
+
+Si conservamos solo los primeros $k$ valores singulares, obtenemos la aproximación truncada
+\[
+X_k = U_{:,1:k} \Sigma_{1:k,1:k} V_{:,1:k}^T.
+\]
+
+Ideas clave:
+\begin{itemize}\footnotesize
+  \item $X_k$ tiene rango $k$.
+  \item Los primeros valores singulares capturan la estructura dominante de la imagen.
+  \item Si la imagen tiene redundancia, puede aproximarse bien con pocos componentes.
+  \item Esto muestra que la SVD sirve para compresión y aproximación de bajo rango.
+\end{itemize}
+\vspace{-0.15em}
+\begin{block}{Mensaje final}
+\centering
+La SVD permite describir una imagen compleja usando solo unas cuantas direcciones principales.
+\end{block}
+\end{frame}
+
+\begin{frame}{Espectro singular y estructura de una imagen}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+Si graficamos los valores singulares $\sigma_1, \sigma_2, \dots$, observamos cuánto aporta cada componente de la SVD.
+
+\vspace{0.2em}
+\textbf{Qué observar:}
+\begin{itemize}\footnotesize
+  \item En una imagen real, los valores singulares suelen decrecer relativamente rápido.
+  \item Esto indica que gran parte de la información está concentrada en pocos modos.
+  \item Si aleatorizamos los pixeles, la estructura geométrica se destruye.
+  \item En ese caso, el espectro singular se vuelve menos concentrado.
+\end{itemize}
+
+\textbf{Interpretación:}
+\begin{itemize}\footnotesize
+  \item El decaimiento de los valores singulares mide la complejidad efectiva de la matriz.
+\end{itemize}
+
+\begin{block}{Mensaje final}
+\centering
+Una matriz con estructura puede comprimirse mejor que una matriz aleatoria.
+\end{block}
+\end{frame}
+
+\begin{frame}{Pseudo-inversa de Moore--Penrose}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+La pseudo-inversa de Moore--Penrose de $A$, denotada por $A^\dagger$, es la \textbf{única} matriz que satisface:
+\[
+AA^\dagger A = A,
+\qquad
+A^\dagger A A^\dagger = A^\dagger,
+\]
+\[
+(AA^\dagger)^\top = AA^\dagger,
+\qquad
+(A^\dagger A)^\top = A^\dagger A.
+\]
+\vspace{0.25em}
+\begin{itemize}\small
+  \item Si $A$ es cuadrada e invertible, entonces $A^\dagger=A^{-1}$.
+  \item Si $A$ es \textbf{tall} ($m>n$) y full rank en columnas,
+  \[
+    A^\dagger=(A^\top A)^{-1}A^\top.
+  \]
+  \item Si $A$ es \textbf{fat} ($m<n$) y full rank en filas,
+  \[
+    A^\dagger=A^\top(AA^\top)^{-1}.
+  \]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pseudoinversa vía SVD y lectura geométrica}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\small
+\vspace{-0.2em}
+Si
+\[
+  A=U\Sigma V^\top,
+\]
+\vspace{-0.35em}
+entonces
+\[
+  A^\dagger = V\Sigma^\dagger U^\top,
+\]
+\vspace{-0.35em}
+{\footnotesize donde $\Sigma^\dagger$ invierte los valores singulares no nulos y deja en cero los demás.}
+\begin{itemize}\footnotesize
+  \setlength{\itemsep}{0.15em}
+  \item En problemas \textbf{sobredeterminados}, $A^\dagger b$ da la solución de mínimos cuadrados.
+  \item En problemas \textbf{infradeterminados}, $A^\dagger b$ da la solución exacta de \textbf{menor norma} cuando existe.
+  \item La pseudoinversa unifica inversa, mínimos cuadrados y rango deficiente en una sola fórmula.
+\end{itemize}
+\vspace{-0.2em}
+\begin{block}{Ejemplo que ya vimos}
+\footnotesize
+Para $A=\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix}$ y $b=\begin{bmatrix}1\\2\\2\end{bmatrix}$,
+\[
+  A^\dagger b = \begin{bmatrix}7/6\\1/2\end{bmatrix},
+\]
+que coincide con el estimador OLS.
+\end{block}
+\end{frame}
+
+\subsection{Matrices simétricas, cociente de Rayleigh y PCA}
+
+\begin{frame}{Formas cuadráticas y cociente de Rayleigh}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.54\textwidth}
+\small
+Sea $A$ una matriz simétrica. La forma cuadrática asociada es
+\[
+  q(v)=v^\top A v.
+\]
+El \key{cociente de Rayleigh} de $A$ en una dirección $v\neq 0$ es
+\[
+  R_A(v)=\frac{v^\top A v}{v^\top v}.
+\]
+Si además $\|v\|=1$, entonces $R_A(v)=v^\top A v$.
+\begin{block}{Resultado fundamental}
+\footnotesize
+Si $A$ es simétrica, el máximo de $R_A(v)$ se alcanza en un eigenvector del mayor eigenvalor, y el mínimo en un eigenvector del menor eigenvalor.
+\end{block}
+\end{column}
+\begin{column}{0.44\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_circle_ellipse_symmetric.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo simétrico $2\times 2$}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.54\textwidth}
+\footnotesize
+Sea
+\[
+  A=\begin{bmatrix}2&1\\1&2\end{bmatrix}.
+\]
+Entonces
+\[
+  q(v)=v^\top A v = 2v_1^2 + 2v_2^2 + 2v_1v_2.
+\]
+Sus eigenpares son:
+\[
+  \lambda_1=3,\quad q_1=\tfrac{1}{\sqrt2}(1,1)^\top,
+  \quad
+  \lambda_2=1,\quad q_2=\tfrac{1}{\sqrt2}(1,-1)^\top.
+\]
+Sobre la esfera unitaria,
+\[
+  \max q(v)=3 \text{ en } q_1,
+  \quad
+  \min q(v)=1 \text{ en } q_2.
+\]
+\end{column}
+\begin{column}{0.44\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_sym2x2_ellipse.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{PCA como problema espectral}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Sea $X_c$ la matriz de datos centrada. PCA busca la dirección unitaria que maximiza la varianza proyectada:
+\[
+  \max_{\|v\|=1} v^\top X_c^\top X_c v.
+\]
+Con multiplicadores de Lagrange,
+\[
+  \mathcal{L}(v,\lambda)=v^\top X_c^\top X_c v - \lambda(v^\top v -1)
+\]
+implica
+\[
+  X_c^\top X_c v = \lambda v.
+\]
+\begin{itemize}\small
+  \item Las componentes principales son eigenvectores de $X_c^\top X_c$.
+  \item El mayor eigenvalor corresponde a la primera componente principal.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PCA y SVD de datos centrados}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.52\textwidth}
+\small
+Si
+\[
+  X_c = U\Sigma V^\top,
+\]
+entonces
+\[
+  X_c^\top X_c = V\Sigma^\top\Sigma V^\top.
+\]
+Por tanto:
+\begin{itemize}\footnotesize
+  \item las columnas de $V$ son las \textbf{direcciones principales};
+  \item la varianza explicada está asociada a $\sigma_i^2$ (salvo factores de escala como $n$ o $n-1$);
+  \item PCA es la aplicación estadística más importante de la estructura espectral vista en esta semana.
+\end{itemize}
+\end{column}
+\begin{column}{0.46\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{week07_pca_2d.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Cierre de la semana}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Proyección, mínimos cuadrados y regresión lineal} describen el mismo objeto geométrico.
+  \item \key{Conditioning} explica cuándo una solución es sensible al ruido y por qué conviene resolver con QR o SVD.
+  \item \key{SVD} organiza la matriz en modos ortogonales, cuantifica energía, permite truncar y define la pseudoinversa.
+  \item \key{Formas cuadráticas, cociente de Rayleigh y EVD} preparan el camino hacia \key{PCA}.
+\end{itemize}
+\vspace{0.3em}
+\begin{quote}\small
+Detrás de muchos algoritmos de machine learning hay una misma idea: representar, aproximar y descomponer información en espacios lineales.
+\end{quote}
+\end{frame}
+
+\section[Lab NumPy]{Lab NumPy\label{sec:lab-numpy-w07-final}}
+
+\begin{frame}{Lab NumPy — Actividad 1: proyección en una dirección}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Fijar $u,y\in\mathbb{R}^d$; calcular
+  \[
+    \hat y = \frac{u^\top y}{u^\top u}u,
+    \qquad
+    r=y-\hat y.
+  \]
+  \item Verificar numéricamente que $u^\top r \approx 0$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividad 2: mínimos cuadrados del ejemplo de clase}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Construir $X$ y $y$ del ejemplo; calcular $X^\top X$, $X^\top y$, $\hat w$, $\hat y$ y $r$.
+  \item Verificar $X^\top r\approx 0$.
+  \item Comparar con \texttt{numpy.linalg.lstsq}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividades 3--4: SVD y conditioning}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{SVD:} usar \texttt{np.linalg.svd}, reconstruir $A$ y aproximarla por $A_k$; medir error Frobenius.
+  \item \key{Conditioning:} comparar matrices bien y mal condicionadas con \texttt{np.linalg.cond}; perturbar $b$ en $Ax=b$ y observar el efecto sobre la solución.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Pseudocódigo: compresión de imágenes con SVD}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Cargar una imagen en escala de grises y representarla como una matriz $X$.
+  \item Calcular la SVD:
+  \[
+    X = U \Sigma V^T.
+  \]
+  \item Elegir varios valores de $k$, por ejemplo:
+  \[
+    k \in \{1, 2, 5, 10, 20, 50, 100\}.
+  \]
+  \item Para cada $k$, construir la aproximación truncada:
+  \[
+    X_k = U_{:,1:k} \Sigma_{1:k,1:k} V_{:,1:k}^T.
+  \]
+  \item Visualizar cada reconstrucción y comparar la pérdida de detalle.
+  \item Graficar los primeros valores singulares para observar su decaimiento.
+  \item Aleatorizar los pixeles de la imagen, recalcular la SVD y comparar el espectro singular con el de la imagen original.
+  \item Concluir qué relación hay entre:
+  \begin{itemize}\scriptsize
+    \item estructura de la matriz,
+    \item rapidez del decaimiento espectral,
+    \item calidad de la compresión.
+  \end{itemize}
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Preguntas para discutir en laboratorio}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item ¿Por qué una imagen real puede comprimirse bien con pocos componentes?
+  \item ¿Qué cambia cuando se destruye la estructura espacial de los pixeles?
+  \item ¿Qué información nos da el espectro singular sobre la complejidad de la matriz?
+  \item ¿Cómo conecta este experimento con PCA y reducción de dimensión?
+\end{itemize}
+\vspace{0.4em}
+\begin{block}{Interpretación matemática}
+\small
+El experimento conecta la aproximación de bajo rango
+\[
+X_k=\sum_{i=1}^k \sigma_i u_i v_i^\top
+\]
+con la concentración espectral: cuando $\sigma_i$ decae rápido, la energía
+\[
+\|X\|_F^2=\sum_i \sigma_i^2
+\]
+se preserva con pocos términos y la compresión mantiene estructura relevante.
+\end{block}
+\end{frame}
+
+\section[Lab sklearn]{Lab sklearn\label{sec:lab-sklearn-w07-final}}
+
+\begin{frame}{Lab sklearn — Regresión lineal y PCA}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}\small
+  \item \texttt{LinearRegression}: comparar coeficientes con la solución cerrada de mínimos cuadrados.
+  \item \texttt{PCA}: interpretar \texttt{components\_} y \texttt{explained\_variance\_ratio\_} a la luz de la SVD de $X_c$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Preguntas guía para la discusión}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}\small
+  \item ¿Qué significa proyectar ortogonalmente?
+  \item ¿Por qué el residual en LS es ortogonal a $\mathrm{col}(X)$?
+  \item ¿Qué indica un valor singular grande frente a uno casi nulo?
+  \item ¿Qué nos dice un número de condición grande sobre la estabilidad del problema?
+  \item ¿Por qué PCA se conecta con eigenvectores de $X_c^\top X_c$ y con la SVD de $X_c$?
+\end{itemize}
+\end{frame}

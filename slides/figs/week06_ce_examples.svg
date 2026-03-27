@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="260" viewBox="0 0 620 260">
+  <style>
+    .axis { stroke: #4b5563; stroke-width: 1.5; }
+    .bar { fill: #3b82f6; }
+    .bar-bad { fill: #ef4444; }
+    .label { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: #111827; }
+    .title { font-family: system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: bold; fill: #111827; }
+    .small { font-size: 11px; fill: #374151; }
+  </style>
+
+  <!-- Title -->
+  <text x="310" y="24" text-anchor="middle" class="title">
+    Cross-entropy para distintos niveles de confianza
+  </text>
+
+  <!-- Axes -->
+  <line x1="70" y1="210" x2="550" y2="210" class="axis"/>
+  <line x1="70" y1="60" x2="70" y2="210" class="axis"/>
+
+  <!-- Bars for CE values (approx) -->
+  <!-- Case A: correcto y muy confiado (0.105) -->
+  <rect x="110" y="190" width="70" height="20" class="bar"/>
+  <text x="145" y="185" text-anchor="middle" class="small">H 0.10</text>
+
+  <!-- Case B: correcto pero dudoso (0.693) -->
+  <rect x="260" y="120" width="70" height="90" class="bar"/>
+  <text x="295" y="115" text-anchor="middle" class="small">H 0.69</text>
+
+  <!-- Case C: muy confiado y equivocado (4.605) -->
+  <rect x="410" y="60" width="70" height="150" class="bar-bad"/>
+  <text x="445" y="55" text-anchor="middle" class="small">H 4.61</text>
+
+  <!-- X labels -->
+  <text x="145" y="230" text-anchor="middle" class="label">Acierto confiado</text>
+  <text x="295" y="230" text-anchor="middle" class="label">Acierto dudoso</text>
+  <text x="445" y="230" text-anchor="middle" class="label">Error confiado</text>
+
+  <!-- Y labels -->
+  <text x="30" y="150" text-anchor="middle" class="label" transform="rotate(-90 30 150)">
+    log p(y verdadero)
+  </text>
+
+  <!-- Legends with probabilities -->
+  <text x="145" y="80" text-anchor="middle" class="small">
+    p = (0.9, 0.05, 0.05)
+  </text>
+  <text x="295" y="95" text-anchor="middle" class="small">
+    p = (0.5, 0.25, 0.25)
+  </text>
+  <text x="445" y="110" text-anchor="middle" class="small">
+    p = (0.01, 0.98, 0.01)
+  </text>
+
+  <!-- Commentary -->
+  <text x="310" y="245" text-anchor="middle" class="small">
+    La cross-entropy penaliza fuertemente estar muy seguro y equivocado.
+  </text>
+</svg>
+

@@ -1,0 +1,622 @@
+% slides/week07/week07_linear_algebra.tex
+% Semana 7 — Linear Algebra (proyecciones, SVD, conditioning, ML)
+
+\title[Semana 7: Álgebra lineal]{Semana 7 — Álgebra lineal para Machine Learning}
+\subtitle{Proyecciones, SVD, conditioning y geometría de mínimos cuadrados}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+\date{Semana 7}
+
+\providecommand{\temariobar}[4]{}
+
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+\AtBeginSection[]{
+  \begin{frame}{Semana 7 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+  \end{itemize}
+  \end{columns}
+  \end{frame}
+}
+
+\part{Semana 7}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Lecturas sugeridas (PML y conexiones de laboratorio)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Cap. 7 — Linear algebra}
+  \begin{itemize}\footnotesize
+    \item \key{7.1.2--7.1.4} Espacios vectoriales, normas, propiedades matriciales
+    \item \key{7.2} Multiplicación matricial
+    \item \key{7.4} EVD: simétricas, formas cuadráticas
+    \item \key{7.5} SVD: bases, \(A^\top A\), pseudoinversa, truncada
+    \item \key{7.6.2} QR
+    \item \key{7.7.3} Sistemas sobredeterminados (mínimos cuadrados)
+  \end{itemize}
+  \item \key{Conexiones prácticas}
+  \begin{itemize}\footnotesize
+    \item \key{11.2.2--11.2.3} Regresión lineal / MLE y cómputo
+    \item \key{11.3.2} Ridge y PCA
+    \item \key{20.1.2} Derivación de PCA
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Temario de la Semana 7}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \textbf{Teoría:} vectores y \(\mathrm{col}(X)\); normas; proyección; LS, \(P\) y regresión; conditioning y hilo normales\(\rightarrow\)QR\(\rightarrow\)SVD\(\rightarrow A^+\); SVD (definición, energía, truncación, pseudoinversa); formas cuadráticas y EVD; PCA; cierre.
+  \item \textbf{Lab NumPy:} proyección 1D; ejemplo LS pequeño; SVD y reconstrucción; \(\kappa(A)\) y perturbaciones.
+  \item \textbf{Lab sklearn:} \texttt{LinearRegression}, \texttt{PCA}; comparar con NumPy/SVD.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Apertura: ML como geometría lineal}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{quote}\small
+Hoy vamos a ver problemas de machine learning como problemas geométricos: predicciones como \textbf{proyecciones}, regresión como \textbf{mejor aproximación} en un subespacio, y SVD como forma de descubrir las \textbf{direcciones más importantes} de una matriz.
+\end{quote}
+\vspace{0.5em}
+\begin{itemize}\small
+  \item Una matriz no es solo una tabla: es una \key{transformación lineal} del espacio (rotar, escalar, proyectar, colapsar direcciones).
+  \item Si esa intuición queda clara, SVD deja de ser una fórmula suelta y pasa a ser herramienta central para datos y modelos.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Objetivos de aprendizaje (semana)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\footnotesize
+  \item Interpretar vectores/matrices geométricamente; \(\mathrm{col}(X)\) y predicciones lineales \(Xw\).
+  \item Proyección ortogonal; ecuaciones normales; \(P=X(X^\top X)^{-1}X^\top\) simétrica e idempotente.
+  \item SVD \(A=U\Sigma V^\top\); relación con eigenvalores de \(A^\top A\) y \(AA^\top\).
+  \item Conditioning \(\kappa=\sigma_{\max}/\sigma_{\min}\); colinealidad e inestabilidad.
+  \item Conectar con regresión lineal (LS) y PCA (SVD de datos centrados).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Hilo conductor en una frase}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}
+  \item \key{Geometría del modelo lineal:} vectores, \(\mathrm{col}(X)\), proyección, \textbf{mínimos cuadrados} y \textbf{regresión} como mismo objeto.
+  \item \key{Estabilidad y cómputo:} \textbf{conditioning}; \textbf{normales \(\rightarrow\) QR \(\rightarrow\) SVD \(\rightarrow A^+\)} para la misma pregunta (LS).
+  \item \key{SVD en detalle:} descomposición, energía, truncación, pseudoinversa.
+  \item \key{De simétricas a PCA:} formas cuadráticas, EVD, componentes principales (y SVD de datos centrados).
+\end{itemize}
+\vspace{0.4em}
+\begin{block}{Mensaje}
+\centering
+\textbf{Aproximar en subespacios; entender y calcular bien con descomposiciones ortogonales.}
+\end{block}
+\end{frame}
+
+\section[Teoría]{Teoría\label{sec:teoria-w07}}
+
+\subsection{Vectores, subespacios y normas}
+
+\begin{frame}{Datos como vectores y matriz de diseño \(X\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Observación con \(d\) features: \(x\in\mathbb{R}^d\); \(n\) observaciones en filas \(\Rightarrow\) \(X\in\mathbb{R}^{n\times d}\).
+  \item Convención habitual: \key{filas} \(=\) muestras; \key{columnas} \(=\) features (incl. intercepto si aplica).
+  \item Modelo lineal en features: predicción \( \hat y = Xw\) vive en el \key{espacio columna} \(\mathrm{col}(X)\).
+  \item \key{Restricción geométrica:} no podemos predecir cualquier \(y\in\mathbb{R}^n\) con un modelo lineal fijo: solo vectores en \(\mathrm{col}(X)\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Combinaciones lineales y \(\mathrm{col}(X)\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Combinación de columnas \(x_1,\ldots,x_p\): \(w_1x_1+\cdots+w_px_p\).
+  \item Forma matricial compacta: \(Xw\) con \(X=[x_1\,\cdots\,x_p]\).
+  \item \(\mathrm{col}(X)=\{Xw:w\in\mathbb{R}^p\}\) es el conjunto de \textbf{todas} las predicciones lineales posibles con esas columnas.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Norma euclidiana y error cuadrático}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \(\|x\|_2=\sqrt{x^\top x}\); distancia \(\|x-z\|_2\).
+  \item En regresión (sin pesos), minimizar \(\|y-Xw\|_2^2\) es buscar el punto de \(\mathrm{col}(X)\) \textbf{más cercano} a \(y\) (norma inducida por producto interno estándar).
+\end{itemize}
+\end{frame}
+
+\subsection{Proyección ortogonal}
+
+\begin{frame}{Proyección: mejor punto en un subespacio}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Dado subespacio \(S\) y vector \(y\), la proyección ortogonal \(\hat y\in S\) minimiza \(\|y-\hat y\|_2\) con residual \(r=y-\hat y\) \key{ortogonal a \(S\)}.
+  \item En una recta generada por \(u\): \(\displaystyle \mathrm{proj}_u(y)=\frac{u^\top y}{u^\top u}\,u\). Si \(\|u\|=1\): \((u^\top y)u\).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.64\linewidth,height=0.46\textheight,keepaspectratio]{week07_projection_line.png}
+\end{center}
+\end{frame}
+
+\begin{frame}{Derivación en una recta (mínimos cuadrados 1D)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  \min_a \|y-au\|_2^2 = y^\top y -2a\,u^\top y + a^2 u^\top u
+  \quad\Rightarrow\quad
+  \frac{d}{da}= -2u^\top y + 2a\,u^\top u = 0
+  \;\Rightarrow\;
+  a=\frac{u^\top y}{u^\top u}.
+\]
+\vspace{0.3em}
+\begin{itemize}\small
+  \item Residual \(r=y-\hat y\) cumple \(u^\top r=0\): el error es perpendicular a la dirección de aproximación.
+\end{itemize}
+\end{frame}
+
+\subsection{Mínimos cuadrados y ecuaciones normales}
+
+\begin{frame}{Proyección sobre \(\mathrm{col}(X)\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  \hat w=\argmin_w \|y-Xw\|_2^2,\qquad \hat y=X\hat w.
+\]
+\begin{itemize}\small
+  \item Condición geométrica: \(r=y-X\hat w\) ortogonal a \textbf{cada} columna de \(X\) \(\Rightarrow\) \(X^\top r=0\).
+  \item Sustituyendo: \key{ecuaciones normales} \(X^\top X\hat w=X^\top y\).
+  \item Si \(X^\top X\) es invertible: \(\hat w=(X^\top X)^{-1}X^\top y\).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.58\linewidth,height=0.36\textheight,keepaspectratio]{week07_column_space_3d.png}
+\end{center}
+\vspace{-0.25em}
+{\scriptsize Esquema en \(\mathbb{R}^3\): el plano representa \(\mathrm{col}(X)\); \(y\in\mathbb{R}^n\) es análogo en \(\mathbb{R}^n\).}
+\end{frame}
+
+\begin{frame}{Derivación analítica (gradiente)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  J(w)=\|y-Xw\|_2^2 = y^\top y -2w^\top X^\top y + w^\top X^\top X w
+  \;\Rightarrow\;
+  \nabla_w J(w)= -2X^\top y + 2X^\top X w = 0.
+\]
+\vspace{0.3em}
+Misma conclusión: \(X^\top X\hat w=X^\top y\).
+\end{frame}
+
+\begin{frame}{Matriz hat / proyección \(P\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  \hat y = X(X^\top X)^{-1}X^\top y = Py,\qquad P=X(X^\top X)^{-1}X^\top.
+\]
+\begin{itemize}\small
+  \item \(P^\top=P\) (simétrica) y \(P^2=P\) (idempotente): proyectar dos veces es lo mismo.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo pequeño (verificación \(X^\top r=0\))}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  X=\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix},\quad
+  y=\begin{bmatrix}1\\2\\2\end{bmatrix}
+  \;\Rightarrow\;
+  \hat w=\begin{bmatrix}7/6\\1/2\end{bmatrix},\quad
+  \hat y=\begin{bmatrix}7/6\\10/6\\13/6\end{bmatrix},\quad
+  r=\frac{1}{6}\begin{bmatrix}-1\\2\\-1\end{bmatrix}.
+\]
+\begin{itemize}\small
+  \item Comprobar: \(X^\top r=0\). Gráficamente: recta LS y residuos verticales en el plano \((x,y)\).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.58\linewidth,height=0.32\textheight,keepaspectratio]{week07_ls_scatter.png}
+\end{center}
+\end{frame}
+
+\begin{frame}{Regresión lineal \(=\) mínimos cuadrados}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item OLS minimiza \(\|y-Xw\|_2^2\): \(\hat y\) es la proyección ortogonal de \(y\) sobre \(\mathrm{col}(X)\); el residual es ortogonal a las columnas de \(X\) (ecuaciones normales).
+  \item Es el mismo objeto geométrico que acabamos de ver; la estabilidad numérica de \(\hat w\) dependerá del \textbf{conditioning} de \(X\) y de cómo resolvamos el sistema (siguiente bloque y SVD).
+\end{itemize}
+\end{frame}
+
+\subsection{Conditioning y cómputo (antes de la SVD)}
+
+\begin{frame}{Conditioning: sensibilidad a perturbaciones}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Problema \key{mal condicionado}: pequeños cambios en la entrada \(\Rightarrow\) grandes cambios en la solución.
+  \item Norma 2: \(\displaystyle \kappa(A)=\frac{\sigma_{\max}(A)}{\sigma_{\min}(A)}\). Si \(\sigma_{\min}\approx 0\), \(\kappa\) grande.
+  \item Ejemplo casi colineal: \(\begin{bmatrix}1&1\\1&1.0001\end{bmatrix}\) — explica inestabilidad al invertir \(X^\top X\), utilidad de estandarizar/ridge.
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.92\linewidth,height=0.42\textheight,keepaspectratio]{week07_conditioning_ellipses.png}
+\end{center}
+\end{frame}
+
+\begin{frame}{Hilo: ecuaciones normales \(\rightarrow\) QR \(\rightarrow\) SVD \(\rightarrow\) \(A^+\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \textbf{Misma pregunta:} minimizar \(\|b-Ax\|_2\) (en regresión: \(A=X\), \(b=y\)).
+  \item \key{Normales \(X^\top X\hat w=X^\top y\):} máxima claridad geométrica (residual \(\perp\mathrm{col}(X)\)); formar \(X^\top X\) puede empeorar el conditioning (\(\kappa(X^\top X)\approx \kappa(X)^2\)).
+  \item \key{QR:} resolver LS de forma \textbf{estable} sin \(X^\top X\); muy usado con rango columnas completo.
+  \item \key{SVD:} describe geometría y espectro de \(A\); maneja \textbf{rango deficiente}; define \textbf{pseudoinversa} \(A^+=V\Sigma^+U^\top\) y solución LS canónica / norma mínima.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{QR/SVD frente a ecuaciones normales}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Ecuaciones normales: \textbf{excelente intuición} (ortogonalidad del residual).
+  \item En la práctica: \key{QR} o \key{SVD} suelen preferirse para LS numéricamente robusto; SVD además sirve para truncar, PCA y \(A^+\) (lo veremos en detalle a continuación).
+\end{itemize}
+\end{frame}
+
+\subsection{SVD}
+
+\begin{frame}{SVD: motivación (pedagógica)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Toda matriz \(A\in\mathbb{R}^{m\times n}\) actúa como transformación lineal; la SVD la descompone en pasos \textbf{geométricamente simples} (rotaciones/reflexiones y escalados en ejes ortogonales).
+  \item \key{Siempre existe} (no exige que \(A\) sea cuadrada ni diagonalizable en el sentido clásico de EVD).
+  \item Da un lenguaje común para \textbf{rango}, \textbf{aproximación de bajo rango}, \textbf{estabilidad numérica} y \textbf{PCA} / datos centrados.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SVD: definición formal}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definición (descomposición en valores singulares)}
+Sea \(A\in\mathbb{R}^{m\times n}\) con \(\mathrm{rank}(A)=r\). Una \key{SVD} de \(A\) es una factorización
+\[
+  A = U\Sigma V^\top,
+\]
+donde \(U\in\mathbb{R}^{m\times m}\) y \(V\in\mathbb{R}^{n\times n}\) son \textbf{ortogonales} (\(U^\top U=I_m\), \(V^\top V=I_n\)), y \(\Sigma\in\mathbb{R}^{m\times n}\) es \textbf{diagonal rectangular}: \(\Sigma_{ii}=\sigma_i\ge 0\) para \(i=1,\ldots,r\), el resto de entradas de \(\Sigma\) es cero. Convención \(\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r>0\).
+\end{block}
+\begin{itemize}\small
+  \item Los \(\sigma_i\) son los \textbf{valores singulares}; las columnas \(u_i\) de \(U\) y \(v_i\) de \(V\) son los \textbf{vectores singulares} (izquierdos y derechos).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Valores singulares y vectores singulares}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Relaciones (modos no nulos)}
+Para \(i=1,\ldots,r\) con \(\sigma_i>0\):
+\[
+  Av_i = \sigma_i u_i,\qquad A^\top u_i = \sigma_i v_i.
+\]
+\end{block}
+\begin{itemize}\small
+  \item \key{Interpretación:} \(v_i\) es una dirección de entrada que \(A\) envía a la salida alineada con \(u_i\), amplificada por \(\sigma_i\).
+  \item Si \(\sigma_i=0\), ese modo no contribuye al rango (no hay acoplamiento entrada--salida en ese par).
+  \item \key{Ortogonalidad:} \(\|u_i\|_2=\|v_i\|_2=1\) y, para \(i\neq j\), \(u_i^\top u_j=0\), \(v_i^\top v_j=0\) (bases ortonormales de los espacios imagen y dominio asociados a la SVD).
+\end{itemize}
+\vspace{0.25em}
+\begin{quote}\small
+\textbf{En una frase:} un \key{vector singular} es una dirección ortonormal de entrada (\(v_i\)) o de salida (\(u_i\)) que, con su \(\sigma_i\), describe cómo \(A\) acopla ese \textbf{modo} entre ambos espacios.
+\end{quote}
+\end{frame}
+
+\begin{frame}{SVD: interpretación geométrica}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item En la \textbf{entrada}, \(V^\top\) lleva vectores a coordenadas en la base ortonormal \(\{v_i\}\); ahí \(\Sigma\) aplica los factores \(\sigma_i\) (y, si \(m\neq n\), rellena o elimina dimensiones).
+  \item En la \textbf{salida}, \(U\) combina los ejes singulares izquierdos \(\{u_i\}\) en coordenadas estándar de \(\mathbb{R}^m\).
+  \item Esquema: \textbf{rotar/reflejar} (\(V^\top\)) \(\rightarrow\) \textbf{estirar} (\(\Sigma\)) \(\rightarrow\) \textbf{rotar/reflejar} (\(U\)).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{week07_circle_ellipse_general.png}
+\end{center}
+\vspace{-0.15em}
+{\scriptsize Imagen del círculo unitario bajo una matriz \(2\times 2\): elipse cuyos semiejes guardan relación con \(\sigma_1,\sigma_2\).}
+\end{frame}
+
+\begin{frame}{Ejemplo numérico pequeño de SVD}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Sea \(\displaystyle A=\begin{bmatrix}3&0\\0&1\end{bmatrix}\). Una SVD es
+\[
+  A = U\Sigma V^\top = I_2 \begin{bmatrix}3&0\\0&1\end{bmatrix} I_2.
+\]
+\begin{itemize}\small
+  \item \(\sigma_1=3\) y \(\sigma_2=1\) son los factores de estiramiento a lo largo de las direcciones singulares (aquí, los ejes canónicos).
+  \item Ejemplo \textbf{rango 1}: \(\displaystyle A=\begin{bmatrix}1&2\\2&4\end{bmatrix}\) tiene \(\sigma_1=5\), \(\sigma_2=0\): toda la energía Frobenius está en un único término \(\sigma_1 u_1 v_1^\top\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Para qué sirve la SVD (qué pretende)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Descomponer} cualquier matriz rectangular en piezas ortogonales \(\sigma_i u_i v_i^\top\) de rango 1, ordenadas por importancia (\(\sigma_1\ge\sigma_2\ge\cdots\)).
+  \item \key{Aproximar} con rango bajo \(A_k\) (truncar) con error controlado en norma (Frobenius / espectral).
+  \item \key{Cómputo estable:} pseudoinversa, LS rank-deficiente, \(\kappa=\sigma_{\max}/\sigma_{\min}\).
+  \item \key{Datos y ML:} PCA (SVD de datos centrados), compresión, filtrado de ruido, factorizaciones en recomendación, reducción de dimensión.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SVD y eigenvalores de \(A^\top A\), \(AA^\top\)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\[
+  A^\top A = V\Sigma^\top\Sigma V^\top,\qquad
+  AA^\top = U\Sigma\Sigma^\top U^\top.
+\]
+\begin{block}{Lectura espectral}
+\(A^\top A\) y \(AA^\top\) son \textbf{simétricas semidefinidas positivas}; la SVD es una EVD ortogonal de ambas, con el mismo espectro no nulo \(\{\sigma_i^2\}\).
+\end{block}
+\begin{itemize}\small
+  \item Columnas de \(V\): eigenvectores de \(A^\top A\); \(\lambda_i(A^\top A)=\sigma_i^2\) (valores no nulos).
+  \item Columnas de \(U\): eigenvectores de \(AA^\top\) con los mismos \(\sigma_i^2\).
+  \item \key{EVD vs SVD:} la EVD clásica pide \(A\) cuadrada y no garantiza base ortogonal de eigenvectores; la SVD aplica a cualquier \(A\) rectangular y siempre da \(U,V\) ortogonales.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SVD y \(A^\top A\): comprobación numérica (\(\sigma_i^2=\lambda_i\))}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.72\textheight,keepaspectratio]{week07_svd_vs_ata_eigen.png}
+
+\vspace{0.2em}
+{\scriptsize Para una matriz aleatoria \(A\), las barras \(\sigma_i^2\) (SVD) y \(\lambda_i(A^\top A)\) coinciden índice a índice.}
+\end{frame}
+
+\begin{frame}{Expansión de rango 1 y aproximación truncada}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Expansión de la SVD (suma de matrices rango 1)}
+Con \(u_i,v_i\) columnas de \(U,V\) y \(\sigma_i\) en \(\Sigma\):
+\[
+  A=\sum_{i=1}^r \sigma_i u_i v_i^\top.
+\]
+La \textbf{SVD truncada} de orden \(k\le r\) es \(A_k=\sum_{i=1}^k \sigma_i u_i v_i^\top\) (se descartan modos con \(i>k\)).
+\end{block}
+\begin{itemize}\small
+  \item Cada \(\sigma_i u_i v_i^\top\) tiene rango 1 y es ortogonal (en producto de Frobenius) a los demás modos.
+  \item Los \(\sigma_i\) grandes dominan \(\|A\|_F^2\) y la geometría; el scree y \(\|A-A_k\|_F\) vs \(k\) se muestran a continuación; la energía y Eckart--Young, después.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Scree y error de reconstrucción (SVD truncada)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\vspace{-0.2em}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{week07_svd_scree.png}\\[-0.15em]
+{\scriptsize \(\sigma_i\) ordenados.}
+\column{0.5\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{week07_svd_trunc.png}\\[-0.15em]
+{\scriptsize \(\|A-A_k\|_F\) vs \(k\).}
+\end{columns}
+\end{frame}
+
+\begin{frame}{``Energía'' en la SVD: qué significa}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definición (norma de Frobenius)}
+\(\displaystyle \|A\|_F = \sqrt{\sum_{i=1}^m\sum_{j=1}^n a_{ij}^2}\) (norma euclidiana del vector que apila todas las entradas de \(A\)).
+\end{block}
+La \key{energía} (en sentido \(L^2\) matricial) es \(\|A\|_F^2\). Por la SVD:
+\[
+  \|A\|_F^2 = \sum_{i=1}^r \sigma_i^2 \qquad \text{(expansión de energía en modos).}
+\]
+\begin{itemize}\small
+  \item El modo \(i\) aporta \(\sigma_i^2\); la \textbf{fracción de energía} del modo \(i\) es \(\displaystyle \frac{\sigma_i^2}{\sum_j \sigma_j^2}\).
+  \item Energía acumulada con \(k\) modos: \(\sum_{i=1}^k \sigma_i^2\) (en PCA sobre datos centrados: relacionado con varianza explicada, salvo factores como \(n\) o \(n-1\)).
+  \item \key{Eckart--Young:} \(A_k\) es la mejor aproximación de rango \(\le k\) en \(\|\cdot\|_F\); \(\|A-A_k\|_F^2=\sum_{i>k}\sigma_i^2\) (energía de los modos descartados).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pseudoinversa de Moore--Penrose: para qué sirve}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definición vía SVD}
+Si \(A=U\Sigma V^\top\), entonces \(A^+=V\Sigma^+U^\top\), donde \(\Sigma^+\) reemplaza cada \(\sigma_i>0\) por \(1/\sigma_i\) y deja en \(0\) los \(\sigma_i=0\).
+\end{block}
+\begin{itemize}\small
+  \item \key{Sistemas sobredeterminados} (\(m>n\), típico en LS): \(x=A^+b\) es la solución de \textbf{mínimos cuadrados} con \textbf{norma euclídea mínima entre las soluciones LS} si hay varias (p.\,ej.\ rank deficiency).
+  \item \key{Sistemas infradeterminados} (\(m<n\), muchas soluciones exactas): \(x=A^+b\) es la solución exacta (si existe) de \textbf{menor norma} \(\|x\|_2\).
+  \item \key{Sustituto estable de la inversa:} generaliza \(A^{-1}\) cuando \(A\) no es invertible; evita formar \(A^\top A\) y es la base de \texttt{pinv} en NumPy/Matlab y de LS con SVD.
+  \item \key{ML:} regresión cuando \(X^\top X\) es singular o mal condicionada; extensiones teóricas en mínimos cuadrados regularizados (ridge acota \(\sigma_i\), distinto matiz).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pseudoinversa: ejemplos numéricos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\textbf{1) Sobredeterminado (mismo ejemplo que LS).}
+\[
+  A=\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix},\quad
+  b=\begin{bmatrix}1\\2\\2\end{bmatrix}.
+\]
+Entonces \(x=A^+b\) coincide con el estimador OLS:
+\[
+  x=\begin{bmatrix}7/6\\1/2\end{bmatrix}
+  \quad\text{(mínimo de }\|b-Ax\|_2^2\text{; aquí \(A\) tiene rango pleno columnas).}
+\]
+\textbf{2) Infradeterminado.} \(A=\begin{bmatrix}1&1\end{bmatrix}\), \(b=\begin{bmatrix}2\end{bmatrix}\): infinitas soluciones de \(x_1+x_2=2\). La pseudoinversa da
+\[
+  x=A^+b=\begin{bmatrix}1\\1\end{bmatrix},
+\]
+la de \textbf{menor norma} \(\|x\|_2\) entre todas las soluciones exactas.
+\end{frame}
+
+\subsection{Formas cuadráticas, EVD y PCA}
+
+\begin{frame}{Forma cuadrática: definición}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definición}
+Dada \(A\in\mathbb{R}^{n\times n}\), la \key{forma cuadrática} asociada a \(A\) es la función
+\[
+  q:\mathbb{R}^n\to\mathbb{R},\qquad q(v)=v^\top A v=\sum_{i=1}^n\sum_{j=1}^n a_{ij}\,v_i v_j.
+\]
+\end{block}
+\begin{itemize}\small
+  \item Es un polinomio \textbf{homogéneo de grado 2} en las coordenadas de \(v\) (solo términos \(v_iv_j\), sin término constante ni lineal).
+  \item Para \(A\) simétrica, \(q\) determina de forma única a \(A\); si \(A\) no es simétrica, \(v^\top A v=v^\top\bigl(\tfrac{A+A^\top}{2}\bigr)v\) (misma \(q\) con la parte simétrica).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Matrices simétricas y formas cuadráticas}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Si \(A\) es simétrica: \(A=Q\Lambda Q^\top\) con \(Q\) ortogonal.
+  \item Los eigenvectores aparecen al optimizar \(v^\top A v\) con \(\|v\|=1\) (direcciones extremas de la forma cuadrática) — mismo espíritu que PCA sobre \(X_c^\top X_c\).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{week07_circle_ellipse_symmetric.png}
+\end{center}
+\end{frame}
+
+\begin{frame}{Ejemplo: matriz simétrica \(2\times 2\) y forma cuadrática}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[c]
+\column{0.56\textwidth}
+\small
+Sea \(\displaystyle A=\begin{bmatrix}2&1\\1&2\end{bmatrix}\) (simétrica). Entonces
+\[
+  q(v)=v^\top A v = 2v_1^2+2v_2^2+2v_1v_2.
+\]
+Eigenpares: \(\lambda_1=3\) con \(q_1=\frac{1}{\sqrt2}(1,1)^\top\), y \(\lambda_2=1\) con \(q_2=\frac{1}{\sqrt2}(1,-1)^\top\).
+\begin{itemize}\small
+  \item Sobre \(\|v\|=1\), \(q(v)\) toma máximo \(3\) en \(q_1\) y mínimo \(1\) en \(q_2\).
+\end{itemize}
+\column{0.44\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.50\textheight,keepaspectratio]{week07_sym2x2_ellipse.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Matrices simétricas / formas cuadráticas: para qué sirven}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Geometría:} elipsoides de niveles \(x^\top A x\) y \textbf{ejes principales} de transformaciones simétricas.
+  \item \key{Optimización:} \(\max_{\|v\|=1} v^\top A v\) (Rayleigh) \(\Rightarrow\) eigenvector del mayor eigenvalor.
+  \item \key{ML / datos:} covarianza simétrica; eigenvectores \(\Rightarrow\) direcciones de varianza extrema (PCA vía \(X_c^\top X_c\)).
+  \item \key{Modelos:} Hessianas, kernels y matrices de Gram simétricas.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PCA: primera componente (Lagrangiano corto)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Con \(X_c\) centrado, maximizar varianza proyectada \(\|X_c v\|_2^2=v^\top X_c^\top X_c v\) sujeto a \(\|v\|_2^2=1\):
+\[
+  \mathcal{L}(v,\lambda)=v^\top X_c^\top X_c v-\lambda(v^\top v-1)
+  \;\Rightarrow\;
+  \nabla_v\mathcal{L}=2X_c^\top X_c v-2\lambda v=0.
+\]
+\vspace{0.2em}
+\begin{itemize}\small
+  \item Entonces \(X_c^\top X_c v=\lambda v\): la PC1 es el eigenvector de \(X_c^\top X_c\) con mayor \(\lambda\) (varianza explicada).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PCA y SVD de datos centrados}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Con \(X_c\) centrado por columnas, PCA busca direcciones de máxima varianza; enfoque espectral: eigenvectores de \(X_c^\top X_c\) (equivalentemente, columnas de \(V\) en la SVD de \(X_c\) — conecta con el bloque anterior de SVD).
+  \item Varianza explicada ligada a \(\sigma_i^2\).
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.62\linewidth,height=0.42\textheight,keepaspectratio]{week07_pca_2d.png}
+\end{center}
+\end{frame}
+
+\subsection{Cierre}
+
+\begin{frame}{Errores conceptuales frecuentes}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Matriz solo como tabla (no como transformación).
+  \item LS como receta sin proyección ni \(\mathrm{col}(X)\).
+  \item Confundir eigenvalores con valores singulares.
+  \item ``Solución exacta'' vs ``mejor aproximación'' en sobredeterminado.
+  \item PCA como ``girar datos'' sin objetivo de varianza / espectro de \(X_c^\top X_c\).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre de la semana}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Proyección / LS / regresión:} misma geometría (\(\hat y\in\mathrm{col}(X)\), residual ortogonal).
+  \item \key{Conditioning y cómputo:} normales para intuir; QR/SVD (y \(A^+\)) para resolver con cuidado.
+  \item \key{SVD:} geometría, energía, bajo rango, pseudoinversa.
+  \item \key{EVD simétrica y PCA:} formas cuadráticas, varianza, SVD de datos centrados.
+\end{itemize}
+\vspace{0.3em}
+\begin{quote}\footnotesize
+Detrás de muchos algoritmos hay una misma idea: representar, aproximar y descomponer información en espacios lineales.
+\end{quote}
+\end{frame}
+
+\begin{frame}{Núcleo en 5 ideas (para recordar)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{enumerate}\small
+  \item Vectores, \(\mathrm{col}(X)\), proyección, LS y regresión.
+  \item Conditioning; hilo normales \(\rightarrow\) QR \(\rightarrow\) SVD \(\rightarrow A^+\).
+  \item SVD: geometría, energía, truncación; \(\sigma_i^2=\lambda_i(A^\top A)\); pseudoinversa.
+  \item Formas cuadráticas, EVD simétrica, PCA (SVD de \(X_c\)).
+  \item Intuición (geometría, normales) frente a implementación estable (QR/SVD, \(\kappa\)).
+\end{enumerate}
+\end{frame}
+
+\section[Lab NumPy]{Lab NumPy\label{sec:lab-numpy-w07}}
+
+\begin{frame}{Lab NumPy — Actividad 1: proyección 1D}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Fijar \(u,y\in\mathbb{R}^d\); calcular \(\hat y=\frac{u^\top y}{u^\top u}u\) y \(r=y-\hat y\).
+  \item Verificar \(u^\top r=0\) numéricamente (\(\approx 0\)).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividad 2: LS del ejemplo de clase}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Construir \(X,y\) del ejemplo; formar \(X^\top X\), \(X^\top y\); resolver \(\hat w\); formar \(\hat y\), \(r\).
+  \item Comprobar \(X^\top r\approx 0\); comparar con \texttt{numpy.linalg.lstsq}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividades 3--4: SVD y conditioning}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{SVD:} \texttt{np.linalg.svd}; reconstruir \(A\) y \(A_k\); error Frobenius vs \(k\).
+  \item \key{Conditioning:} \texttt{np.linalg.cond}; perturbar \(b\) en \(Ax=b\) y observar cambio en \(x\) para \(\kappa\) pequeño vs grande.
+\end{itemize}
+\end{frame}
+
+\section[Lab sklearn]{Lab sklearn\label{sec:lab-sklearn-w07}}
+
+\begin{frame}{Lab sklearn — Regresión y PCA}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}\small
+  \item \texttt{LinearRegression}: coeficientes vs solución cerrada \((X^\top X)^{-1}X^\top y\) en dataset pequeño.
+  \item \texttt{PCA}: \texttt{components\_}, \texttt{explained\_variance\_ratio\_}; comparar direcciones con SVD de \(X\) centrado.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Preguntas guía (discusión)}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}\small
+  \item ¿Qué significa proyectar ortogonalmente?
+  \item ¿Por qué el residual es ortogonal a \(\mathrm{col}(X)\)?
+  \item ¿Qué indica un valor singular grande frente a uno casi nulo?
+  \item ¿Qué problemas numéricos sugiere \(\kappa\) grande en regresión?
+  \item ¿Por qué PCA se conecta con eigenvectores de \(X_c^\top X_c\) / SVD?
+\end{itemize}
+\end{frame}
