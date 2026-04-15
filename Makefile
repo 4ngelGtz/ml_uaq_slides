@@ -8,6 +8,7 @@ WEEK03FIGSCRIPT=scripts/week03_make_multivariate_figs.py
 WEEK04FIGSCRIPT=scripts/week04_make_mle_erm_figs.py
 WEEK06FIGSCRIPT=scripts/week06_make_entropy_coin_fig.py
 WEEK07FIGSCRIPT=scripts/week07_make_linear_algebra_figs.py
+WEEK09FIGSCRIPT=scripts/week09_make_figs.py
 
 # Prefer a local venv if present (avoids global Python deps)
 PYTHON:=$(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
@@ -53,6 +54,15 @@ WEEK07FIGS=$(FIGDIR)/week07_projection_line.png \
      $(FIGDIR)/week07_conditioning_ellipses.png \
      $(FIGDIR)/week07_svd_vs_ata_eigen.png
 
+WEEK09FIGS=$(FIGDIR)/week09_ols_line_and_residuals.png \
+     $(FIGDIR)/week09_gd_loss_curve.png \
+     $(FIGDIR)/week09_gd_learning_rate_comparison.png \
+     $(FIGDIR)/week09_ridge_vs_ols_coefficients.png \
+     $(FIGDIR)/week09_ridge_path.png \
+     $(FIGDIR)/week09_lasso_sparse_coefficients.png \
+     $(FIGDIR)/week09_poly_underfit_overfit.png \
+     $(FIGDIR)/week09_bias_variance_curve.png
+
 all: $(OUTDIR)/main.pdf
 
 # 1) Regla: generar figuras
@@ -84,13 +94,18 @@ $(WEEK07FIGS): $(WEEK07FIGSCRIPT)
 	mkdir -p $(FIGDIR)
 	MPLCONFIGDIR="$(CURDIR)/.mplcache" $(PYTHON) $(WEEK07FIGSCRIPT)
 
+# Week 9 figures (regression / regularization)
+$(WEEK09FIGS): $(WEEK09FIGSCRIPT)
+	mkdir -p $(FIGDIR)
+	MPLCONFIGDIR="$(CURDIR)/.mplcache" $(PYTHON) $(WEEK09FIGSCRIPT)
+
 # 2) Regla: compilar PDF (depende de figuras y contenido)
-$(OUTDIR)/main.pdf: $(MAIN) $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) slides/week01/week01_content.tex slides/week02/week02_probability_univariate.tex slides/week03/week03_probability_multivariate.tex slides/week04/week04_statistics_mle_erm.tex slides/week07/week07_linear_algebra.tex
+$(OUTDIR)/main.pdf: $(MAIN) $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS) slides/week01/week01_content.tex slides/week02/week02_probability_univariate.tex slides/week03/week03_probability_multivariate.tex slides/week04/week04_statistics_mle_erm.tex slides/week07/week07_linear_algebra.tex slides/week09/week09_linear_regression_regularization.tex
 	mkdir -p $(OUTDIR)
 	$(TEX) -interaction=nonstopmode -halt-on-error -output-directory=$(OUTDIR) $(MAIN)
 	$(TEX) -interaction=nonstopmode -halt-on-error -output-directory=$(OUTDIR) $(MAIN)
 
-figs: $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS)
+figs: $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS)
 
 clean:
 	rm -rf $(OUTDIR)/*

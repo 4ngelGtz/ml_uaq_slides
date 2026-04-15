@@ -1,0 +1,778 @@
+% slides/week09/week09_linear_regression_regularization.tex
+% Semana 9 — Regresión lineal + regularización
+
+% =========================
+% Metadata
+% =========================
+\title[Semana 9: Regresión + regularización]{Semana 9 — Regresión lineal y regularización}
+\subtitle{OLS, Ridge, Lasso, Elastic Net, generalización y laboratorios NumPy/sklearn}
+\author{Curso de Machine Learning — UAQ (Matemáticas Aplicadas)}
+\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 9}
+
+% =========================
+% Helpers
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+\providecommand{\temariobar}[4]{}
+
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+\AtBeginSection[]{%
+  \begin{frame}{Semana 9 — mapa del temario (progreso)}
+  \temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoría}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+  \end{itemize}
+  \end{columns}
+  \end{frame}%
+}
+
+% =========================================================
+\part{Semana 9}
+% =========================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% TEMARIO
+% =========================================================
+\begin{frame}{Temario de la Semana 9}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{enumerate}\small
+  \item \key{Teoría:} modelo lineal, mínimos cuadrados, solución cerrada, descenso por gradiente, Ridge, Lasso, Elastic Net y tradeoff sesgo--varianza.
+  \item \key{Lab NumPy:} OLS con solución cerrada y con GD; Ridge en forma cerrada; Lasso con subgradiente simple.
+  \item \key{Lab sklearn:} \texttt{LinearRegression}, \texttt{Ridge}, \texttt{Lasso}, \texttt{ElasticNet} + validación cruzada.
+  \item \key{Entregable:} notebooks reproducibles, figuras mínimas e interpretación breve.
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+% LECTURAS
+% =========================================================
+\begin{frame}{Secciones recomendadas (PML = Murphy)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Cap.~11 — Linear Regression}
+  \begin{itemize}\footnotesize
+    \item \key{11.1} Modelo e interpretación de coeficientes
+    \item \key{11.2} Mínimos cuadrados, ecuaciones normales, geometría y buenas prácticas numéricas
+    \item \key{11.3} Ridge (regularización $\ell_2$)
+    \item \key{11.4} Lasso ($\ell_1$), \emph{soft thresholding}, camino de regularización, Elastic Net (\key{11.4.8})
+  \end{itemize}
+  \item \key{Cap.~4:} \key{4.5} regularización y CV; \key{4.7.6} bias--variance tradeoff
+  \item \key{Cap.~8:} \key{8.2} métodos de primer orden; \key{8.4.2} SGD en regresión lineal
+  \item \key{Puente Semana~7:} \key{7.7.3} sistemas sobredeterminados (misma geometría de LS)
+\end{itemize}
+\vspace{0.25em}
+\begin{block}{Convención de símbolos}
+\footnotesize
+En estas diapositivas: $n$ observaciones, $d$ features, $X$ diseño, $y$ targets, $w$ coeficientes, $b$ intercepto, $\lambda$ regularización. En Murphy suele escribirse $N$ y $D$; las fórmulas son las mismas.
+\end{block}
+\end{frame}
+
+% =========================================================
+% PREGUNTA CENTRAL
+% =========================================================
+\begin{frame}{Pregunta central de la semana}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Esta semana gira alrededor de tres preguntas:
+\begin{enumerate}\small
+  \item ¿Cómo ajustamos un modelo lineal de manera estable?
+  \item ¿Qué pasa cuando la solución de mínimos cuadrados se vuelve sensible o inestable?
+  \item ¿Cómo ayuda la regularización a mejorar la generalización?
+\end{enumerate}
+\vspace{0.35em}
+\begin{block}{Mensaje central}
+\centering
+\small
+Minimizar el error en entrenamiento no siempre basta.\\
+En ML también queremos que el modelo funcione bien \textbf{fuera de muestra}.
+\end{block}
+\end{frame}
+
+% =========================================================
+\section[Teoría]{Teoría\label{sec:teoria-w09}}
+% =========================================================
+
+\subsection{Motivación y modelo}
+
+\begin{frame}{Apertura: por qué seguimos estudiando regresión lineal}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item No solo sirve como baseline. Es el lugar natural para entender:
+  \begin{itemize}\footnotesize
+    \item función de pérdida,
+    \item optimización,
+    \item interpretación de parámetros,
+    \item regularización,
+    \item generalización.
+  \end{itemize}
+  \item Muchos modelos más complejos conservan esta misma lógica (hasta redes neuronales terminan con una capa lineal).
+  \item Conecta con la Semana~7: mínimos cuadrados es un problema de \key{proyección ortogonal} sobre el espacio columna de la matriz de diseño.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Modelo lineal y notación}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item $n$: observaciones; \; $d$: features.
+  \item $X\in\mathbb{R}^{n\times d}$: matriz de diseño (cada fila $=$ una observación).
+  \item $y\in\mathbb{R}^n$: \term{targets} (lo que queremos predecir).
+  \item $w\in\mathbb{R}^d$: coeficientes; \; $b\in\mathbb{R}$: intercepto.
+  \item $\hat y = Xw + b\,\mathbf{1}_n$: predicciones.
+  \item $r = y-\hat y$: residuos.
+  \item $\lambda\ge 0$: fuerza de regularización.
+\end{itemize}
+\vspace{0.25em}
+\begin{block}{Forma ampliada}
+\centering
+$\tilde X=[\,\mathbf{1}_n \mid X\,]\in\mathbb{R}^{n\times(d+1)}$,\quad $\theta=\begin{bmatrix}b\\ w\end{bmatrix}$,\quad $\hat y=\tilde X\theta$.
+\end{block}
+{\footnotesize La idea es simple: aproximar $y$ como combinación lineal de las features, más un término constante.}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Mínimos cuadrados}
+% ---------------------------------------------------------
+
+\begin{frame}{¿Qué minimiza mínimos cuadrados?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Queremos los coeficientes que hagan pequeñas las diferencias entre lo observado y lo predicho.
+
+\vspace{0.3em}
+Definimos la función objetivo:
+\[
+J(\theta)=\|y-\tilde X\theta\|_2^2 = \sum_{i=1}^n (y_i - \hat y_i)^2.
+\]
+Penalizamos más los errores grandes porque los elevamos al cuadrado.
+
+\vspace{0.3em}
+\textbf{Intuitivamente:} entre todos los hiperplanos posibles, buscamos el que deje los residuos lo más pequeños posible en conjunto.
+\end{frame}
+
+\begin{frame}{Intuición geométrica}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Resolver mínimos cuadrados equivale a \key{proyectar} el vector $y$ sobre el espacio generado por las columnas de $X$.
+
+\vspace{0.3em}
+\begin{itemize}\small
+  \item $\hat y$ vive dentro de $\mathrm{col}(X)$.
+  \item El residuo $r=y-\hat y$ queda \key{ortogonal} a ese espacio.
+\end{itemize}
+
+\vspace{0.3em}
+Esta es la conexión natural con la semana de álgebra lineal: mínimos cuadrados no es solo una fórmula, también es un \textbf{problema de proyección}.
+\end{frame}
+
+\begin{frame}{Ecuaciones normales y solución cerrada}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Derivando $J$ e igualando a cero:
+\[
+X^\top X\, w = X^\top y
+\qquad\Rightarrow\qquad
+\hat w = (X^\top X)^{-1}X^\top y.
+\]
+\vspace{0.15em}
+\begin{itemize}\small
+  \item Elegante y conceptualmente importante.
+  \item Pero si $X^\top X$ está \key{mal condicionada}, invertir directamente amplifica errores.
+  \item En la práctica, conviene usar \texttt{np.linalg.lstsq}, QR o SVD.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo: recta ajustada y residuos}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\small
+Un ejemplo sencillo: datos 1D con ruido, recta ajustada y segmentos verticales que muestran los residuos.
+
+\vspace{0.3em}
+La meta es ver que ``ajustar una recta'' realmente significa minimizar el tamaño conjunto de esos errores.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week09_ols_line_and_residuals.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Métricas básicas de ajuste}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Una vez ajustado el modelo, resumimos su desempeño con:
+\begin{itemize}\small
+  \item \key{MSE / RMSE:} tamaño típico del error.
+  \item \key{$R^2$:} qué proporción de la variabilidad observada explica el modelo.
+\end{itemize}
+
+\vspace{0.3em}
+Y con gráficos de diagnóstico:
+\begin{itemize}\footnotesize
+  \item predicción vs.\ realidad,
+  \item residuos vs.\ predicción,
+  \item pérdida vs.\ iteración (en gradient descent).
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize La idea no es memorizar fórmulas, sino entender qué nos dice cada métrica.}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Descenso por gradiente}
+% ---------------------------------------------------------
+
+\begin{frame}{Descenso por gradiente}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Aunque existe solución cerrada, GD introduce la lógica de \key{entrenamiento iterativo} que aparece en muchos otros modelos.
+
+\vspace{0.2em}
+Para $\mathcal{L}(\theta)=\frac1n\|y-\tilde X\theta\|_2^2$:
+\[
+\nabla_\theta \mathcal{L}=\frac{2}{n}\tilde X^\top(\tilde X\theta-y),
+\qquad
+\theta \leftarrow \theta - \eta\,\nabla_\theta\mathcal{L}.
+\]
+
+\vspace{0.2em}
+Tres ideas clave:
+\begin{enumerate}\footnotesize
+  \item El \key{learning rate} $\eta$ controla la velocidad del paso.
+  \item Si $\eta$ es demasiado grande, el algoritmo puede oscilar o divergir.
+  \item Escalar features importa mucho en la práctica.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{GD en acción: pérdida vs.\ iteración}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{week09_gd_loss_curve.png}\\[0.15em]
+\scriptsize Convergencia estable con $\eta$ razonable
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{week09_gd_learning_rate_comparison.png}\\[0.15em]
+\scriptsize Efecto de la tasa de aprendizaje
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Regularización}
+% ---------------------------------------------------------
+
+\begin{frame}{¿Por qué aparece la regularización?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Mínimos cuadrados busca el mejor ajuste, pero la solución puede ser \key{inestable}.
+
+\vspace{0.3em}
+Esto pasa cuando:
+\begin{itemize}\small
+  \item hay features muy correlacionadas,
+  \item hay muchas variables respecto al tamaño de muestra,
+  \item el modelo empieza a capturar ruido,
+  \item pequeños cambios en los datos producen cambios grandes en $w$.
+\end{itemize}
+
+\vspace{0.3em}
+La regularización añade una \key{penalización} para controlar la complejidad del modelo.
+\end{frame}
+
+\begin{frame}{Ridge: penalización $\ell_2$}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Ridge agrega un término que penaliza coeficientes grandes:
+\[
+J_{\mathrm{Ridge}}(w) = \|y-Xw\|_2^2 + \lambda\|w\|_2^2.
+\]
+
+\vspace{0.2em}
+\begin{itemize}\small
+  \item \key{Encoge} coeficientes (pero no los lleva a cero).
+  \item Mejora \key{estabilidad numérica}.
+  \item Ayuda especialmente con \key{multicolinealidad}.
+  \item Reduce varianza a costa de introducir algo de sesgo.
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize Importante: normalmente \textbf{no} se penaliza el intercepto $b$.}
+\end{frame}
+
+\begin{frame}{Solución cerrada de Ridge}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+La solución también se escribe en forma cerrada:
+\[
+\hat w_{\mathrm{Ridge}} = (X^\top X + \lambda I)^{-1}X^\top y.
+\]
+
+\vspace{0.3em}
+El término $\lambda I$ modifica el problema para hacerlo más estable.
+
+\vspace{0.25em}
+\begin{itemize}\small
+  \item $\lambda=0$: recuperamos OLS.
+  \item $\lambda$ grande: coeficientes tienden a encogerse hacia cero.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ridge: OLS vs.\ coeficientes estabilizados}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{week09_ridge_vs_ols_coefficients.png}\\[0.15em]
+\scriptsize Con features correlacionadas, OLS explota; Ridge estabiliza
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{week09_ridge_path.png}\\[0.15em]
+\scriptsize Al aumentar $\lambda$, los coeficientes se encogen
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Elegir $\lambda$}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+La fuerza de regularización no se elige ``a ojo''.
+
+\vspace{0.3em}
+En la práctica, $\lambda$ se trata como un \key{hiperparámetro} y se elige con \key{validación cruzada}.
+
+\vspace{0.3em}
+La idea es balancear dos cosas:
+\begin{itemize}\small
+  \item ajustar bien los datos de entrenamiento,
+  \item no hacer el modelo demasiado flexible.
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize Recorrer varios valores de $\lambda$ en escala logarítmica y comparar desempeño en validación.}
+\end{frame}
+
+\begin{frame}{Lasso: penalización $\ell_1$ y esparcidad}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Lasso usa penalización $\ell_1$ en lugar de $\ell_2$:
+\[
+J_{\mathrm{Lasso}}(w) = \|y-Xw\|_2^2 + \lambda\|w\|_1,
+\qquad
+\|w\|_1 = \sum_{j=1}^d |w_j|.
+\]
+
+\vspace{0.2em}
+La diferencia conceptual importante:
+\begin{itemize}\small
+  \item \key{Ridge} encoge coeficientes.
+  \item \key{Lasso} puede encogerlos \textbf{hasta cero}.
+\end{itemize}
+
+\vspace{0.2em}
+Esto vuelve a Lasso especialmente interesante cuando sospechamos que solo unas cuantas features son realmente relevantes.
+\end{frame}
+
+\begin{frame}{¿Por qué Lasso puede producir ceros?}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+La penalización $\ell_1$ tiene \key{esquinas} en los ejes. Geométricamente, cuando ``crecemos'' la bola $\ell_1$ hasta que toque la superficie de nivel de la loss, es muy probable que el contacto ocurra en una esquina.
+
+\vspace{0.3em}
+Las esquinas corresponden a \key{soluciones con algunos $w_j=0$}.
+
+\vspace{0.3em}
+\begin{itemize}\small
+  \item Ridge tiende a \textbf{repartir} el peso entre variables correlacionadas.
+  \item Lasso tiende a \textbf{concentrarlo} y puede apagar variables.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lasso: comparación de coeficientes (verdad dispersa)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\centering
+\includegraphics[width=0.72\linewidth,height=0.70\textheight,keepaspectratio]{week09_lasso_sparse_coefficients.png}
+
+\vspace{0.15em}
+{\footnotesize Solo $w_1$ y $w_3$ son relevantes. Lasso las identifica; OLS reparte ruido en todas.}
+\end{frame}
+
+\begin{frame}{Lasso desde cero: idea de subgradiente}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+A diferencia de OLS y Ridge, Lasso no tiene una fórmula cerrada general cómoda.
+
+\vspace{0.3em}
+Para fines didácticos, basta una implementación simple con \key{subgradiente}: se modifica la regla de actualización añadiendo $\lambda\,\mathrm{sign}(w)$.
+
+\vspace{0.3em}
+\begin{itemize}\small
+  \item En la práctica hay algoritmos más robustos (\term{coordinate descent}, \term{ISTA}/\term{FISTA}).
+  \item Pero la versión simple ayuda a entender qué está cambiando en el objetivo.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Elastic Net}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Elastic Net combina las dos ideas:
+\[
+J(w) = \|y-Xw\|_2^2 + \lambda_1\|w\|_1 + \lambda_2\|w\|_2^2.
+\]
+
+\vspace{0.2em}
+Es un punto intermedio entre Ridge y Lasso.
+
+\vspace{0.25em}
+Útil cuando:
+\begin{itemize}\small
+  \item queremos algo de esparcidad,
+  \item pero también necesitamos estabilizar variables correlacionadas.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Mensaje corto:} Elastic Net mezcla selección y estabilidad.
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Sesgo--varianza}
+% ---------------------------------------------------------
+
+\begin{frame}{Bias--variance tradeoff}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item Si el modelo es demasiado flexible: baja \term{bias}, alta \term{variance}.
+  \item Si lo regularizamos mucho: reducimos \term{variance}, pero podemos subir \term{bias}.
+\end{itemize}
+
+\vspace{0.3em}
+La meta no es el modelo más complejo ni el más simple, sino el que mejor \key{generaliza}.
+
+\vspace{0.3em}
+La regularización se entiende directamente desde este tradeoff: controlamos complejidad para mejorar desempeño fuera de muestra.
+\end{frame}
+
+\begin{frame}{Intuición visual: complejidad y generalización}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{week09_poly_underfit_overfit.png}\\[0.15em]
+\scriptsize Poca complejidad: se queda corto.\\Mucha: sobreajusta.
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{week09_bias_variance_curve.png}\\[0.15em]
+\scriptsize Error train/test vs.\ grado del polinomio
+\end{column}
+\end{columns}
+\vspace{0.2em}
+{\footnotesize $\lambda$ grande $\approx$ modelo más simple (más sesgo, menos varianza).}
+\end{frame}
+
+\begin{frame}{Resumen teórico (antes del laboratorio)}
+\temariobar{\textbf{Teoría}}{Lab NumPy}{Lab sklearn}{Entregable}
+Ideas que deben quedar claras:
+\begin{itemize}\small
+  \item OLS ajusta por mínimos cuadrados (proyección).
+  \item La solución cerrada es útil pero puede ser numéricamente delicada.
+  \item Gradient descent introduce la lógica de optimización iterativa.
+  \item \key{Ridge} estabiliza mediante penalización $\ell_2$.
+  \item \key{Lasso} puede inducir esparcidad mediante penalización $\ell_1$.
+  \item \key{Elastic Net} combina ambas ideas.
+  \item La regularización es \textbf{control de complejidad}, directamente ligado al tradeoff sesgo--varianza.
+\end{itemize}
+\end{frame}
+
+% =========================================================
+\section[Lab NumPy]{Lab NumPy\label{sec:lab-numpy-w09}}
+% =========================================================
+
+\begin{frame}{Lab NumPy — Actividad 1: OLS con solución cerrada}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\key{Objetivo:} implementar mínimos cuadrados desde cero.
+\begin{itemize}\small
+  \item Generar un dataset lineal simple con ruido.
+  \item Formar $\tilde X$ con columna de unos.
+  \item Calcular $\hat\theta$ con la forma cerrada o con \texttt{lstsq}.
+  \item Verificar que $\tilde X^\top r\approx 0$.
+  \item Graficar puntos, recta ajustada y residuos.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Qué deben observar:}
+los coeficientes estimados se acercan a los valores verdaderos; el residuo no desaparece si hay ruido.
+\end{frame}
+
+\begin{frame}{Pseudocódigo — OLS cerrado}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Fijar semilla (\texttt{rng = np.random.default\_rng(42)}).
+  \item Generar $n$ puntos: $x\sim\mathrm{Uniform}(0,10)$;\; $y = b_{\mathrm{true}} + w_{\mathrm{true}}\,x + \varepsilon$,\; $\varepsilon\sim\mathcal{N}(0,\sigma^2)$.
+  \item Construir $\tilde X = [\,\mathbf{1}_n \mid x\,]\in\mathbb{R}^{n\times 2}$.
+  \item Calcular:
+  \[
+    \hat\theta = (\tilde X^\top \tilde X)^{-1}\tilde X^\top y
+    \quad\text{o bien}\quad
+    \hat\theta = \texttt{np.linalg.lstsq}(\tilde X,\, y).
+  \]
+  \item Obtener $\hat y = \tilde X\hat\theta$,\; $r = y - \hat y$.
+  \item Verificar numéricamente que $\tilde X^\top r \approx 0$.
+  \item Graficar: scatter de $(x,y)$ + recta $\hat y$ + segmentos verticales de residuos.
+  \item Comparar $(\hat b,\hat w)$ con los valores verdaderos usados para generar los datos.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividad 2: OLS con gradient descent}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\key{Objetivo:} resolver el mismo problema con entrenamiento iterativo.
+\begin{itemize}\small
+  \item Inicializar $\theta$ en cero.
+  \item Implementar pérdida y gradiente; actualizar por iteraciones.
+  \item Guardar la pérdida a lo largo del entrenamiento.
+  \item Explorar $\eta$: convergencia vs.\ divergencia.
+  \item Estandarizar columnas y observar el efecto en $\eta$ usable.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Qué deben observar:}
+la pérdida baja cuando $\eta$ es razonable; la solución final se acerca a la forma cerrada.
+\end{frame}
+
+\begin{frame}{Pseudocódigo — Gradient descent para OLS}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Usar el mismo $\tilde X$ e $y$ de la actividad anterior.
+  \item Inicializar $\theta\leftarrow \mathbf{0}\in\mathbb{R}^{d+1}$.
+  \item Elegir tasa de aprendizaje $\eta$ y número de iteraciones $T$.
+  \item \textbf{Para} $t = 1,\dots,T$:
+  \begin{enumerate}\scriptsize
+    \item Calcular residuo: $r \leftarrow \tilde X\theta - y$.
+    \item Calcular gradiente: $g \leftarrow \frac{2}{n}\tilde X^\top r$.
+    \item Actualizar: $\theta \leftarrow \theta - \eta\, g$.
+    \item Guardar la pérdida: $\mathcal{L}^{(t)} \leftarrow \frac{1}{n}\|r\|_2^2$.
+  \end{enumerate}
+  \item Graficar $\mathcal{L}^{(t)}$ vs.\ $t$ (curva de convergencia).
+  \item Comparar $\theta$ final con la solución cerrada de la actividad 1.
+  \item Repetir con $\eta$ más grande y más pequeño; observar divergencia vs.\ convergencia lenta.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividad 3: Ridge en forma cerrada}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\key{Objetivo:} ver el efecto estabilizador de la regularización $\ell_2$.
+\begin{itemize}\small
+  \item Construir dos features muy correlacionadas ($x$ y $x+\varepsilon$).
+  \item Ajustar OLS y Ridge.
+  \item Barrer $\lambda$ en escala log y comparar coeficientes.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Qué deben observar:}
+OLS produce coeficientes grandes e inestables; Ridge los reduce.
+\end{frame}
+
+\begin{frame}{Pseudocódigo — Ridge cerrado}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Generar $x_1\sim\mathcal{N}(0,1)$ de tamaño $n$.
+  \item Crear feature casi idéntica: $x_2 = x_1 + \varepsilon$,\; $\varepsilon\sim\mathcal{N}(0, 0.05)$.
+  \item Construir target: $y = w_1^{\mathrm{true}} x_1 + w_2^{\mathrm{true}} x_2 + \text{ruido}$.
+  \item Centrar $X$ e $y$ (restar medias).
+  \item Calcular OLS: $\hat w_{\mathrm{OLS}} = (X^\top X)^{-1}X^\top y$.
+  \item Para varios $\lambda$ en \texttt{np.logspace(-2, 4, 50)}:
+  \[
+    \hat w_{\mathrm{Ridge}}(\lambda) = (X^\top X + \lambda I)^{-1}X^\top y.
+  \]
+  \item Graficar trayectoria de $\hat w_j(\lambda)$ vs.\ $\lambda$ (escala log en $x$).
+  \item Comparar barras de coeficientes: OLS vs.\ Ridge para un $\lambda$ intermedio.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Actividad 4: Lasso con subgradiente simple}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\key{Objetivo:} entender por qué $\ell_1$ puede producir soluciones dispersas.
+\begin{itemize}\small
+  \item Generar datos donde solo 1--2 variables sean relevantes (el resto ruido).
+  \item Implementar descenso por subgradiente: gradiente cuadrático + $\lambda\,\mathrm{sign}(w)$.
+  \item Comparar patrón de coeficientes con OLS y Ridge.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Qué deben observar:}
+Lasso deja coeficientes muy pequeños o nulos en variables irrelevantes; el escalado importa.
+\end{frame}
+
+\begin{frame}{Pseudocódigo — Lasso con subgradiente}
+\temariobar{Teoría}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Generar $X\in\mathbb{R}^{n\times d}$ con $d=8$ features gaussianas.
+  \item Fijar verdad dispersa: $w^{\mathrm{true}} = (4, 0, -3, 0, 0, 0, 0, 0)$.
+  \item Target: $y = Xw^{\mathrm{true}} + \text{ruido}$. Centrar $X$ e $y$.
+  \item Inicializar $w\leftarrow \mathbf{0}$. Elegir $\eta$ pequeño, $\lambda > 0$, $T$ iteraciones.
+  \item \textbf{Para} $t = 1,\dots,T$:
+  \begin{enumerate}\scriptsize
+    \item Gradiente cuadrático: $g_{\mathrm{LS}} \leftarrow \frac{2}{n}X^\top(Xw - y)$.
+    \item Subgradiente $\ell_1$: $s \leftarrow \mathrm{sign}(w)$ \;(con $\mathrm{sign}(0)=0$).
+    \item Actualizar: $w \leftarrow w - \eta\,(g_{\mathrm{LS}} + \lambda\, s)$.
+  \end{enumerate}
+  \item Comparar $\hat w_{\mathrm{Lasso}}$ con $\hat w_{\mathrm{OLS}}$ y $\hat w_{\mathrm{Ridge}}$ (gráfica de barras).
+  \item Observar qué coeficientes quedan cerca de cero en Lasso.
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+\section[Lab sklearn]{Lab sklearn\label{sec:lab-sklearn-w09}}
+% =========================================================
+
+\begin{frame}{Lab sklearn — Modelos y pipeline}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\key{Objetivo:} llevar las ideas teóricas a herramientas estándar.
+
+\vspace{0.2em}
+Modelos: \texttt{LinearRegression}, \texttt{Ridge}, \texttt{Lasso}, \texttt{ElasticNet}.
+
+\vspace{0.2em}
+Flujo recomendado:
+\begin{enumerate}\footnotesize
+  \item Separar train / validation / test.
+  \item Escalar features dentro de un \texttt{Pipeline} (\texttt{StandardScaler}).
+  \item Entrenar varios modelos.
+  \item Comparar métricas en validación (RMSE, MAE, $R^2$).
+\end{enumerate}
+
+\vspace{0.15em}
+{\footnotesize \key{Importante:} el escalado debe ajustarse \textbf{solo} con train para evitar fuga de información.}
+\end{frame}
+
+\begin{frame}{Lab sklearn — Selección de hiperparámetros}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+Aquí entra la \key{validación cruzada}.
+\begin{itemize}\small
+  \item \texttt{RidgeCV}, \texttt{LassoCV}, \texttt{ElasticNetCV}.
+  \item O \texttt{GridSearchCV} si se quiere más control.
+\end{itemize}
+
+\vspace{0.3em}
+La idea no es solo correr modelos, sino \textbf{justificar} la elección de \texttt{alpha} con un criterio claro de validación.
+\end{frame}
+
+\begin{frame}{Pseudocódigo — Pipeline + CV con sklearn}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Cargar o generar un dataset con $d\ge 4$ features (ej.\ \texttt{make\_regression}).
+  \item Dividir en train/test con \texttt{train\_test\_split}.
+  \item Definir un \texttt{Pipeline}:
+  \begin{enumerate}\scriptsize
+    \item \texttt{StandardScaler} (ajustar solo en train).
+    \item Modelo: \texttt{Ridge(alpha=...)} o \texttt{Lasso(alpha=...)}.
+  \end{enumerate}
+  \item Para selección automática de $\alpha$, usar \texttt{RidgeCV} o \texttt{LassoCV} con una rejilla:
+  \[
+    \alpha \in \texttt{np.logspace(-3, 3, 50)}.
+  \]
+  \item Entrenar con \texttt{pipe.fit(X\_train, y\_train)}.
+  \item Evaluar en test: calcular RMSE, MAE y $R^2$ con \texttt{sklearn.metrics}.
+  \item Repetir para \texttt{LinearRegression}, \texttt{Ridge}, \texttt{Lasso}, \texttt{ElasticNet}.
+  \item Construir una tabla comparativa de métricas por modelo.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab sklearn — Interpretación de coeficientes}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+Con features escaladas, las magnitudes de \texttt{coef\_} se vuelven más comparables.
+
+\vspace{0.3em}
+Comparar:
+\begin{itemize}\small
+  \item ¿Qué hace OLS?
+  \item ¿Qué hace Ridge?
+  \item ¿Qué variables sobrevivieron en Lasso?
+  \item ¿Qué efecto tuvo \texttt{alpha} en la estabilidad?
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize Opcional: contrastar \texttt{coef\_} e \texttt{intercept\_} con la solución NumPy en un toy pequeño.}
+\end{frame}
+
+\begin{frame}{Pseudocódigo — Comparación de coeficientes}
+\temariobar{Teoría}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\footnotesize
+\textbf{Pseudocódigo (guía conceptual)}
+\begin{enumerate}\footnotesize
+  \item Tras entrenar los 4 modelos (OLS, Ridge, Lasso, ElasticNet) con features escaladas:
+  \item Extraer \texttt{model.coef\_} e \texttt{model.intercept\_} de cada uno.
+  \item Construir un \texttt{DataFrame} con columnas = features y filas = modelos.
+  \item Graficar barras agrupadas: una barra por feature, un color por modelo.
+  \item Observar:
+  \begin{itemize}\scriptsize
+    \item ¿Cuáles features lleva Lasso a cero?
+    \item ¿Cuánto encoge Ridge respecto a OLS?
+    \item ¿Qué hace ElasticNet comparado con los otros dos regularizados?
+  \end{itemize}
+  \item En un toy pequeño ($d=2$), verificar numéricamente que \texttt{model.coef\_} coincide con la solución cerrada de NumPy.
+  \item Reportar el \texttt{alpha\_} óptimo encontrado por \texttt{LassoCV} / \texttt{RidgeCV}.
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+\section[Entregable]{Entregable\label{sec:entregable-w09}}
+% =========================================================
+
+\begin{frame}{Entregable — qué debe incluirse}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+\begin{itemize}\small
+  \item \key{Notebook NumPy:} OLS cerrado + GD + Ridge + Lasso (subgradiente); figuras mínimas (pérdida, coeficientes).
+  \item \key{Notebook sklearn:} pipelines + CV + tabla de métricas por modelo; \texttt{alpha} elegido con criterio claro.
+  \item \key{Texto breve:} 5--8 oraciones enlazando inestabilidad OLS, efecto de $\lambda$ y sesgo--varianza.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre de la semana}
+\temariobar{Teoría}{Lab NumPy}{Lab sklearn}{Entregable}
+La regresión lineal no solo sirve para ajustar una recta.
+
+\vspace{0.25em}
+También sirve para entender:
+\begin{itemize}\small
+  \item cómo se formula un problema de aprendizaje,
+  \item cómo se optimiza una función objetivo,
+  \item cómo aparece la inestabilidad,
+  \item por qué regularizar puede mejorar generalización.
+\end{itemize}
+
+\vspace{0.3em}
+\begin{quote}\small
+No se trata solo de reducir error en entrenamiento, sino de entender \textbf{qué tipo de solución queremos} y por qué.
+\end{quote}
+\vspace{0.15em}
+{\footnotesize Ref.: Kevin P.\ Murphy, \textit{Probabilistic Machine Learning: An Introduction} (MIT Press; versión online 2025).}
+\end{frame}
