@@ -1,0 +1,1185 @@
+% slides/week11/week11_logistic_regression.tex
+% Semana 11 — Logistic Regression
+
+% =========================
+% Metadata
+% =========================
+\title[Semana 11: Logistic Regression]{Semana 11 — Logistic Regression}
+\subtitle{De una recta de regresion a una frontera de decision probabilistica}
+\author{Curso de Machine Learning — UAQ (Matematicas Aplicadas)}
+\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy)}
+\date{Semana 11}
+
+% =========================
+% Helpers
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+\providecommand{\temariobar}[4]{}
+
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+\AtBeginSection[]{%
+  \begin{frame}{Semana 11 — mapa del temario (progreso)}
+  \temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Teoria}
+    \item \textbf{Lab NumPy}
+    \item \textbf{Lab sklearn}
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Entregable}
+    \item \textbf{Apendice}
+  \end{itemize}
+  \end{columns}
+  \end{frame}%
+}
+
+% =========================================================
+\part{Semana 11}
+% =========================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% MAPA DE LA SEMANA
+% =========================================================
+\begin{frame}{Mapa de la Semana 11}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{enumerate}\small
+  \item Por que regresion lineal no es ideal para clasificacion.
+  \item Clasificacion binaria y fronteras de decision.
+  \item Score lineal y funcion sigmoid.
+  \item Logistic regression como modelo probabilistico.
+  \item Cross-entropy como negative log-likelihood.
+  \item Optimizacion con gradient descent.
+  \item Regularizacion y estandarizacion.
+  \item Clasificacion multiclase con softmax.
+  \item Labs NumPy y sklearn.
+  \item Entregable.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Convencion de notacion}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item $x_i\in\mathbb{R}^d$: vector de \term{features} de la observacion $i$.
+  \item $X\in\mathbb{R}^{n\times d}$: matriz de diseno (una fila por observacion).
+  \item $y_i\in\{0,1\}$: \term{etiqueta} real; $y\in\{0,1\}^n$.
+  \item $w\in\mathbb{R}^d$: coeficientes; $b\in\mathbb{R}$: intercepto.
+  \item $z_i = x_i^\top w + b$: \term{score lineal}.
+  \item $\hat p_i = \sigma(z_i)$: \term{probabilidad predicha} para la clase 1.
+  \item $\lambda\ge 0$: fuerza de regularizacion; $\eta>0$: tasa de aprendizaje.
+\end{itemize}
+\vspace{0.25em}
+{\footnotesize En Murphy suele aparecer $N$ y $D$ en lugar de $n$ y $d$; las formulas son las mismas.}
+\end{frame}
+
+% =========================================================
+\section[Teoria]{Teoria\label{sec:teoria-w11}}
+% =========================================================
+
+\subsection{De regresion a clasificacion}
+
+\begin{frame}{?`Donde estamos en el curso?}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+En las semanas anteriores usamos \key{modelos lineales} para predecir una variable continua:
+\[
+\hat y = x^\top w + b.
+\]
+
+\vspace{0.3em}
+Ahora la variable objetivo ya no es un numero real cualquiera, sino una \key{clase}:
+\[
+y\in\{0,1\}.
+\]
+
+\vspace{0.4em}
+\begin{block}{Definicion}
+\small
+\key{Clasificacion binaria:} tarea supervisada en la que la variable objetivo toma solo dos valores.
+\end{block}
+
+{\footnotesize Ejemplos: default / no default, fraude / no fraude, incendio / no incendio, spam / no spam.}
+\end{frame}
+
+\begin{frame}{Un dataset de clasificacion binaria en 2D}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\small
+Cada punto es una observacion con dos features $(x_1, x_2)$ y una etiqueta $y\in\{0,1\}$.
+
+\vspace{0.3em}
+Buscamos una regla que, dado un nuevo $(x_1, x_2)$, decida si corresponde a clase 0 o clase 1.
+
+\vspace{0.3em}
+La \term{frontera de decision} es la linea que separa las zonas donde el modelo predice una clase u otra.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week11_class_scatter.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{?`Y si usamos regresion lineal directamente?}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Regresion lineal para clasificacion:} idea ingenua de ajustar $\hat y = x^\top w + b$ a las etiquetas $0/1$ y luego umbralizar a una clase.
+\end{block}
+
+\vspace{0.3em}
+Regla tentativa:
+\[
+\hat y\ge 0.5 \Rightarrow \text{clase } 1,
+\qquad
+\hat y < 0.5 \Rightarrow \text{clase } 0.
+\]
+
+\vspace{0.3em}
+\key{Problema:} $\hat y$ no esta restringido a $[0,1]$. Puede valer $-0.3$ o $1.4$, y entonces no se puede interpretar como \textbf{probabilidad}.
+\end{frame}
+
+\begin{frame}{Por que falla regresion lineal aqui}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\small
+\begin{itemize}\footnotesize
+  \item La recta pasa por los puntos $0/1$ sin restriccion.
+  \item Basta un grupo de observaciones con $x$ grande para \textbf{empujar} la recta fuera de $[0,1]$.
+  \item Las zonas sombreadas muestran valores que ya no son probabilidades validas.
+\end{itemize}
+
+\vspace{0.3em}
+Queremos algo distinto: que la salida del modelo viva \textbf{naturalmente} en $[0,1]$.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week11_linreg_for_classification.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Score lineal y sigmoid}
+
+\begin{frame}{De score lineal a probabilidad}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Score lineal:} combinacion lineal de las features de una observacion,
+\[
+z = x^\top w + b.
+\]
+\end{block}
+
+\vspace{0.25em}
+?`Que significa cada simbolo?
+\begin{itemize}\small
+  \item $x$: vector de features de la observacion.
+  \item $w$: coeficientes (direccion e importancia de cada feature).
+  \item $b$: intercepto (desplaza la frontera).
+  \item $z$: score, un numero real (puede ser negativo, cero, positivo, muy grande, muy pequeno).
+\end{itemize}
+
+\vspace{0.25em}
+\key{Mensaje:} $z$ vive en $\mathbb{R}$. Necesitamos \textbf{aplastar} $z$ dentro de $[0,1]$ para interpretarlo como probabilidad.
+\end{frame}
+
+\begin{frame}{La funcion sigmoid}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Sigmoid} (funcion logistica):
+\[
+\sigma(z) = \frac{1}{1 + e^{-z}}.
+\]
+Transforma cualquier $z\in\mathbb{R}$ en un valor en $(0,1)$.
+\end{block}
+\vspace{0.2em}
+\small
+Propiedades:
+\begin{itemize}\footnotesize
+  \item $\sigma(z)\in(0,1)$ siempre.
+  \item $\sigma(z)\to 1$ si $z\to +\infty$.
+  \item $\sigma(z)\to 0$ si $z\to -\infty$.
+  \item $\sigma(0) = 0.5$.
+  \item Es \textbf{monotona creciente}: mas score $\Rightarrow$ mas probabilidad.
+\end{itemize}
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.70\textheight,keepaspectratio]{week11_sigmoid.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{El modelo logistic regression}
+
+\begin{frame}{Logistic regression: definicion del modelo}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Regresion logistica binaria:} modelo probabilistico que estima la \textbf{probabilidad} de que una observacion pertenezca a la clase $1$, usando un score lineal pasado por sigmoid.
+\end{block}
+
+\vspace{0.3em}
+Modelo:
+\[
+p(y=1 \mid x) = \sigma(x^\top w + b), \qquad
+p(y=0 \mid x) = 1 - p(y=1\mid x).
+\]
+
+\vspace{0.3em}
+\key{Idea central:} el modelo \textbf{no} predice una clase directamente. Primero predice una probabilidad; la clase aparece despues, al aplicar una regla de decision.
+\end{frame}
+
+\begin{frame}{Interpretacion de la salida}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Probabilidad condicional} $p(y=1\mid x)$: probabilidad de que la clase sea $1$, \emph{dado} que observamos el vector de features $x$.
+\end{block}
+
+\vspace{0.3em}
+\textbf{Ejemplo.} Si para un cliente $x$ obtenemos
+\[
+p(y=1\mid x) = 0.82,
+\]
+el modelo esta diciendo: \emph{``segun lo que vi en los datos, este cliente tiene 82\% de probabilidad de estar en la clase 1''}.
+
+\vspace{0.3em}
+Esa probabilidad no es solo un numero: contiene mas informacion que una clasificacion dura. Nos dice que tan \textbf{seguro} esta el modelo.
+\end{frame}
+
+\begin{frame}{Threshold y regla de decision}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Threshold} (umbral): valor de corte $t$ que convierte una probabilidad en una clase.
+\end{block}
+
+\vspace{0.2em}
+Regla comun con $t=0.5$:
+\[
+\hat y =
+\begin{cases}
+1 & \text{si } p(y=1\mid x)\ge 0.5,\\
+0 & \text{si } p(y=1\mid x) < 0.5.
+\end{cases}
+\]
+
+\vspace{0.3em}
+\key{Mensaje:} $0.5$ \textbf{no} siempre es el mejor umbral. En problemas con \term{costos asimetricos} (credito, fraude, salud) conviene mover el threshold.
+
+\vspace{0.2em}
+{\footnotesize Esto conecta con teoria de decisiones, matriz de perdidas y las curvas ROC / precision--recall de la Semana~5.}
+\end{frame}
+
+\begin{frame}{Frontera de decision}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Frontera de decision:} conjunto de puntos donde el modelo es \emph{indiferente} entre las dos clases.
+\end{block}
+
+\vspace{0.2em}
+Con $t=0.5$, como $\sigma(0)=0.5$:
+\[
+p(y=1\mid x) = 0.5
+\;\;\Longleftrightarrow\;\;
+x^\top w + b = 0.
+\]
+
+\vspace{0.25em}
+\key{Mensaje clave:} aunque la probabilidad se calcula con una funcion no lineal, la frontera de decision es \textbf{lineal} en el espacio de features originales.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week11_decision_boundary.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{?`Que aprende el modelo?}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Parametros del modelo:} valores que se ajustan durante el entrenamiento para que el modelo reproduzca bien los datos.
+\end{block}
+
+\vspace{0.25em}
+En logistic regression:
+\[
+\theta = (w, b).
+\]
+
+\vspace{0.25em}
+Interpretacion cualitativa:
+\begin{itemize}\small
+  \item $w_j>0$: subir $x_j$ aumenta $z$ y \textbf{tiende a aumentar} $p(y=1\mid x)$.
+  \item $w_j<0$: subir $x_j$ disminuye $z$ y tiende a \textbf{reducir} $p(y=1\mid x)$.
+  \item $b$ desplaza toda la frontera.
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize \textbf{Aclaracion importante:} la interpretacion \emph{exacta} es lineal en \term{log-odds}, no en probabilidad. Lo formalizamos mas adelante.}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Verosimilitud y cross-entropy}
+
+\begin{frame}{Verosimilitud para clasificacion binaria}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Verosimilitud:} funcion que mide que tan probables son los datos observados bajo ciertos parametros del modelo.
+\end{block}
+
+\vspace{0.2em}
+Para una observacion con etiqueta $y_i\in\{0,1\}$ y probabilidad predicha $\hat p_i = p(y_i=1\mid x_i)$:
+\[
+p(y_i \mid x_i, \theta) = \hat p_i^{\,y_i}\,(1-\hat p_i)^{\,1-y_i}.
+\]
+
+\vspace{0.25em}
+Lectura:
+\begin{itemize}\small
+  \item Si $y_i=1$: $p(y_i\mid x_i,\theta)=\hat p_i$.
+  \item Si $y_i=0$: $p(y_i\mid x_i,\theta)=1-\hat p_i$.
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize Notacion compacta porque $y_i$ solo puede ser $0$ o $1$; uno de los dos exponentes ``apaga'' el otro factor.}
+\end{frame}
+
+\begin{frame}{Maximum Likelihood Estimation (MLE)}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{MLE:} elegir los parametros que hacen \emph{maxima} la probabilidad de observar los datos de entrenamiento.
+\end{block}
+
+\vspace{0.25em}
+Objetivo:
+\[
+\theta_{\mathrm{MLE}}
+= \argmax_\theta \;\prod_{i=1}^{n} p(y_i\mid x_i, \theta).
+\]
+
+\vspace{0.25em}
+En la practica se trabaja con el \key{log-likelihood}:
+\[
+\theta_{\mathrm{MLE}}
+= \argmax_\theta \;\sum_{i=1}^{n} \log p(y_i \mid x_i, \theta).
+\]
+
+\vspace{0.2em}
+{\footnotesize El logaritmo convierte productos en sumas y evita problemas numericos (desbordes/underflow).}
+\end{frame}
+
+\begin{frame}{Negative log-likelihood = binary cross-entropy}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Negative log-likelihood (NLL):} $-\log$ de la verosimilitud. Minimizar NLL equivale a maximizar la verosimilitud.
+\end{block}
+
+\vspace{0.2em}
+Sustituyendo el modelo Bernoulli en el $\log$-likelihood y cambiando el signo:
+\[
+\mathcal{L}(\theta) \;=\;
+-\sum_{i=1}^{n}\Big[\,y_i\log(\hat p_i) + (1-y_i)\log(1-\hat p_i)\,\Big].
+\]
+
+\vspace{0.25em}
+\begin{block}{Definicion}
+\small
+\key{Binary cross-entropy:} perdida que compara etiquetas binarias reales con probabilidades predichas; por construccion es exactamente la expresion de arriba.
+\end{block}
+
+\vspace{0.25em}
+\key{Mensaje:} en logistic regression, \textbf{minimizar binary cross-entropy = maximizar verosimilitud}. No son dos cosas distintas.
+\end{frame}
+
+\begin{frame}{Interpretacion de la cross-entropy}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\small
+La cross-entropy \textbf{penaliza fuerte} a predicciones que asignan baja probabilidad a la clase correcta.
+
+\vspace{0.2em}
+Caso $y=1$:
+\[
+\ell = -\log(\hat p).
+\]
+\begin{itemize}\footnotesize
+  \item $\hat p = 0.9$: perdida $\approx 0.11$.
+  \item $\hat p = 0.1$: perdida $\approx 2.30$.
+  \item $\hat p \to 0$: perdida $\to +\infty$.
+\end{itemize}
+
+\vspace{0.2em}
+Caso $y=0$: igual pero usando $-\log(1-\hat p)$.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.70\textheight,keepaspectratio]{week11_cross_entropy.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{?`Por que no usamos error cuadratico aqui?}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Error cuadratico} $(y-\hat y)^2$: penaliza la diferencia al cuadrado entre etiqueta real y prediccion.
+\end{block}
+
+\vspace{0.25em}
+Se podria usar, pero:
+\begin{itemize}\small
+  \item No surge del supuesto probabilistico correcto (Bernoulli).
+  \item La superficie de perdida puede tener zonas casi planas donde el gradient descent se estanca.
+\end{itemize}
+
+\vspace{0.25em}
+\key{Mensaje:} cross-entropy no es una eleccion arbitraria. Sale \textbf{naturalmente} de la verosimilitud Bernoulli y esta alineada con el modelo.
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Optimizacion}
+
+\begin{frame}{Gradiente de logistic regression}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Gradiente:} vector que indica como cambia la perdida al modificar cada parametro.
+\end{block}
+
+\vspace{0.2em}
+Para cada observacion: $z_i = x_i^\top w + b$, $\hat p_i = \sigma(z_i)$.
+
+\vspace{0.25em}
+Resultado (perdida promedio sobre $n$ observaciones):
+\[
+\nabla_w \mathcal{L}
+= \frac{1}{n}\,X^\top\,(\hat p - y),
+\qquad
+\nabla_b \mathcal{L}
+= \frac{1}{n}\sum_{i=1}^n (\hat p_i - y_i).
+\]
+
+\vspace{0.25em}
+\key{Lectura:}
+\begin{itemize}\footnotesize
+  \item $\hat p - y$: vector de \textbf{errores probabilisticos}.
+  \item $X^\top(\hat p - y)$: distribuye ese error entre las features.
+  \item La forma recuerda al gradiente de regresion lineal (``prediccion menos real''), pero aqui la prediccion ya es una probabilidad.
+\end{itemize}
+
+\vspace{0.15em}
+{\footnotesize La \textbf{derivacion paso a paso} esta en el apendice al final.}
+\end{frame}
+
+\begin{frame}{Gradient descent para logistic regression}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Gradient descent (GD):} algoritmo iterativo que minimiza una funcion actualizando los parametros en direccion opuesta al gradiente.
+\end{block}
+
+\vspace{0.2em}
+Actualizacion:
+\[
+w^{t+1} = w^{t} - \eta\,\nabla_w\mathcal{L},
+\qquad
+b^{t+1} = b^{t} - \eta\,\nabla_b\mathcal{L}.
+\]
+
+\vspace{0.25em}
+\begin{block}{Definicion}
+\small
+\key{Learning rate} $\eta$: tamano del paso en cada actualizacion.
+\end{block}
+
+\vspace{0.25em}
+Efectos tipicos:
+\begin{itemize}\footnotesize
+  \item $\eta$ muy chico: convergencia \textbf{lenta}.
+  \item $\eta$ adecuado: convergencia estable.
+  \item $\eta$ muy grande: oscilaciones o \textbf{divergencia}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Efecto de la tasa de aprendizaje}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\centering
+\includegraphics[width=0.74\linewidth,height=0.72\textheight,keepaspectratio]{week11_gd_learning_rate.png}
+
+\vspace{0.2em}
+{\footnotesize Misma logistic regression; solo cambiamos $\eta$. La curva inestable muestra el riesgo de un learning rate demasiado grande.}
+\end{frame}
+
+\begin{frame}{Stochastic Gradient Descent (SGD)}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{SGD:} variante de gradient descent que actualiza los parametros usando \textbf{una observacion} (o un \term{mini-batch}) en vez de todo el dataset.
+\end{block}
+
+\vspace{0.25em}
+Comparacion rapida:
+\begin{itemize}\small
+  \item \textbf{Batch GD:} usa $X$ completo $\Rightarrow$ curva de perdida suave, pasos costosos.
+  \item \textbf{SGD:} usa 1 observacion $\Rightarrow$ pasos baratos, curva ruidosa.
+  \item \textbf{Mini-batch SGD:} punto medio; es lo que se usa en la practica.
+\end{itemize}
+
+\vspace{0.3em}
+\centering
+\includegraphics[width=0.55\linewidth,height=0.40\textheight,keepaspectratio]{week11_gd_vs_sgd.png}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Regularizacion y escalado}
+
+\begin{frame}{Regularizacion}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Regularizacion:} agregar a la perdida una \textbf{penalizacion} sobre los parametros para controlar la complejidad del modelo.
+\end{block}
+
+\vspace{0.25em}
+Version con regularizacion $\ell_2$:
+\[
+\mathcal{L}_{\mathrm{reg}}(\theta) = \mathcal{L}(\theta) + \lambda\,\|w\|_2^2.
+\]
+
+\vspace{0.25em}
+\begin{block}{Definicion}
+\small
+\key{Regularizacion $\ell_2$:} penaliza la suma de cuadrados de los coeficientes, $\sum_j w_j^2$.
+\end{block}
+
+\vspace{0.2em}
+\key{Mensaje:} la regularizacion empuja al modelo a explicar los datos con coeficientes \textbf{mas pequenos y mas estables}, lo que normalmente mejora la generalizacion.
+\end{frame}
+
+\begin{frame}{L1 vs L2}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Regularizacion $\ell_1$:} penaliza $\|w\|_1 = \sum_j |w_j|$. Puede producir soluciones \term{sparse} (coeficientes exactamente cero).
+\end{block}
+\begin{block}{Definicion}
+\small
+\key{Regularizacion $\ell_2$:} penaliza $\|w\|_2^2 = \sum_j w_j^2$. Encoge coeficientes, pero rara vez los vuelve cero.
+\end{block}
+
+\vspace{0.2em}
+\small
+Lectura rapida:
+\begin{itemize}\footnotesize
+  \item L2 $\approx$ estabilidad.
+  \item L1 $\approx$ seleccion automatica de variables.
+\end{itemize}
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week11_l1_vs_l2.png}\\[0.15em]
+{\scriptsize Mismo dataset, $C=0.5$: L1 apaga mas coeficientes.}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Estandarizacion}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Estandarizacion:} transformar cada feature para que tenga media cero y desviacion estandar uno,
+\[
+x_{ij}^{\mathrm{std}} = \frac{x_{ij} - \mu_j}{\sigma_j}.
+\]
+\end{block}
+
+\vspace{0.25em}
+?`Por que importa con regularizacion?
+\begin{itemize}\small
+  \item Si una feature esta en \$ y otra en millones de dolares, sus coeficientes no son comparables.
+  \item La penalizacion $\|w\|_2^2$ trata a todos los $w_j$ por igual: penaliza mas a las features con escalas grandes solo por el \textbf{tamano numerico}, no por su importancia real.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Regla practica:} con logistic regression regularizada, casi siempre \textbf{estandariza} las features numericas antes de entrenar.
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Interpretacion de coeficientes}
+
+\begin{frame}{Odds y log-odds}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Odds:} razon entre la probabilidad de que ocurra un evento y la probabilidad de que no ocurra,
+\[
+\text{odds} = \frac{p}{1-p}.
+\]
+\end{block}
+
+\begin{block}{Definicion}
+\small
+\key{Log-odds:} $\log\!\big(\tfrac{p}{1-p}\big)$.
+\end{block}
+
+\vspace{0.25em}
+Para logistic regression se cumple la identidad:
+\[
+\log\!\left(\frac{p(y=1\mid x)}{1-p(y=1\mid x)}\right) = x^\top w + b.
+\]
+
+\vspace{0.25em}
+\key{Mensaje clave:} los coeficientes son \textbf{lineales en log-odds}, no directamente en probabilidad.
+\end{frame}
+
+\begin{frame}{Ejemplo interpretativo (riesgo crediticio)}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+Supongamos un modelo para predecir \emph{default}:
+\[
+z = -2 + 0.8\,x_1 - 0.5\,x_2,
+\qquad
+p(y=1\mid x) = \sigma(z),
+\]
+con:
+\begin{itemize}\small
+  \item $x_1$: volatilidad de ingresos (features ya estandarizada).
+  \item $x_2$: meses con ingresos estables recientes.
+\end{itemize}
+
+\vspace{0.25em}
+Lectura cualitativa:
+\begin{itemize}\small
+  \item Subir $x_1$ $\Rightarrow$ suben los log-odds $\Rightarrow$ \textbf{mas riesgo} de default.
+  \item Subir $x_2$ $\Rightarrow$ bajan los log-odds $\Rightarrow$ \textbf{menos riesgo}.
+\end{itemize}
+
+\vspace{0.25em}
+{\footnotesize Siempre bajo el supuesto ``manteniendo las demas variables constantes''.}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Multiclase: softmax}
+
+\begin{frame}{Clasificacion multiclase}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{block}{Definicion}
+\small
+\key{Clasificacion multiclase:} la variable objetivo puede tomar mas de dos clases,
+\[
+y\in\{1,2,\dots,K\}.
+\]
+\end{block}
+
+\vspace{0.3em}
+Ejemplos tipicos:
+\begin{itemize}\small
+  \item Riesgo: bajo / medio / alto.
+  \item Especie: A / B / C.
+  \item Imagenes: perro / gato / caballo.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Idea:} para dos clases usamos sigmoid; para $K$ clases usamos \textbf{softmax}.
+\end{frame}
+
+\begin{frame}{La funcion softmax}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.50\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Softmax:} transforma un vector de scores $z = (z_1,\dots,z_K)$ en un vector de probabilidades,
+\[
+p(y=k\mid x) = \frac{e^{z_k}}{\sum_{j=1}^K e^{z_j}},
+\]
+donde $z_k = x^\top w_k + b_k$.
+\end{block}
+
+\vspace{0.2em}
+\small
+Propiedades:
+\begin{itemize}\footnotesize
+  \item $0 < p(y=k\mid x) < 1$ para todo $k$.
+  \item $\sum_{k=1}^K p(y=k\mid x) = 1$.
+  \item Clase con mayor $z_k$ $\Rightarrow$ mayor probabilidad.
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{week11_softmax_example.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Multinomial logistic regression}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Multinomial logistic regression:} extension a $K$ clases usando softmax.
+\end{block}
+
+\vspace{0.2em}
+Modelo:
+\[
+p(y=k\mid x) = \mathrm{softmax}_k(W^\top x + b),
+\]
+con una fila de pesos $w_k$ \textbf{por cada clase}.
+
+\vspace{0.25em}
+\small
+\key{Mensaje:} en lugar de un solo vector de pesos, aprendemos un conjunto de pesos para comparar varias clases entre si.
+\end{column}
+\begin{column}{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.70\textheight,keepaspectratio]{week11_multiclass_regions.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------
+\subsection{Evaluacion}
+
+\begin{frame}{Evaluacion del modelo}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+Ya entrenado el modelo, medimos su desempeno con metricas de clasificacion (Semana~5).
+\begin{itemize}\small
+  \item \key{Accuracy:} proporcion de predicciones correctas.
+  \item \key{Precision:} de los predichos como positivos, cuantos \emph{realmente} lo son.
+  \item \key{Recall:} de los positivos reales, cuantos \emph{encontro} el modelo.
+  \item \key{F1:} media armonica entre precision y recall.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Mensaje:} un buen modelo no solo acierta mucho. Tambien importa \textbf{que tipo} de errores comete, sobre todo en datasets desbalanceados.
+\end{frame}
+
+\begin{frame}{Threshold tuning}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Definicion}
+\small
+\key{Threshold tuning:} elegir un umbral $t$ distinto de $0.5$ para optimizar una metrica o minimizar un costo concreto.
+\end{block}
+
+\vspace{0.2em}
+\small
+Ejemplo en credito:
+\begin{itemize}\footnotesize
+  \item Falso positivo: rechazar a un buen cliente.
+  \item Falso negativo: aprobar a un mal cliente.
+\end{itemize}
+
+\vspace{0.25em}
+El mejor $t$ depende del \key{costo del error}, no solo del valor de la probabilidad.
+\end{column}
+\begin{column}{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{week11_threshold_tuning.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Errores conceptuales comunes}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item \key{Error 1:} pensar que logistic regression predice una clase directamente.\\
+  \textit{Correccion:} predice una \emph{probabilidad}; la clase aparece al aplicar una regla de decision.
+  \item \key{Error 2:} interpretar $w_j$ como cambio directo en probabilidad.\\
+  \textit{Correccion:} los coeficientes son lineales en \emph{log-odds}.
+  \item \key{Error 3:} confiar en accuracy con clases desbalanceadas.\\
+  \textit{Correccion:} revisar precision, recall, F1 y matriz de confusion.
+  \item \key{Error 4:} regularizar sin estandarizar.\\
+  \textit{Correccion:} la penalizacion depende de la escala de las features.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cierre conceptual}
+\temariobar{\textbf{Teoria}}{Lab NumPy}{Lab sklearn}{Entregable}
+Logistic regression combina tres ideas:
+\begin{enumerate}\small
+  \item Un \key{score lineal}: $z = x^\top w + b$.
+  \item Una \key{transformacion probabilistica}: $p(y=1\mid x) = \sigma(z)$.
+  \item Una \key{perdida basada en verosimilitud}:
+  \[
+  \mathcal{L} = -\sum_i\big[\,y_i\log(\hat p_i) + (1-y_i)\log(1-\hat p_i)\,\big].
+  \]
+\end{enumerate}
+
+\vspace{0.3em}
+\begin{block}{Mensaje final}
+\small
+Es un modelo \textbf{simple, interpretable y muy competitivo como baseline} para problemas de clasificacion. Muchos modelos complejos (incluidas redes neuronales) terminan usando esta misma logica en su ultima capa.
+\end{block}
+\end{frame}
+
+% =========================================================
+\section[Lab NumPy]{Lab NumPy\label{sec:lab-numpy-w11}}
+% =========================================================
+
+\begin{frame}{Lab NumPy — Objetivos}
+\temariobar{Teoria}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\key{Meta:} implementar logistic regression binaria \textbf{desde cero}, sin sklearn (salvo para generar datos o hacer split).
+\begin{itemize}\small
+  \item Ver que las ecuaciones de teoria realmente funcionan al programarlas.
+  \item Conectar el gradiente con la actualizacion.
+  \item Visualizar la curva de perdida y la frontera de decision aprendida.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pseudocodigo — Logistic regression desde cero}
+\temariobar{Teoria}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\footnotesize
+\textbf{Pseudocodigo (guia conceptual)}
+\begin{enumerate}\footnotesize
+  \item Fijar semilla (\texttt{rng = np.random.default\_rng(42)}).
+  \item Generar dataset sintetico 2D (\texttt{make\_classification} o muestreo manual).
+  \item Construir $\tilde X = [\,\mathbf{1}_n \mid X\,]$.
+  \item Implementar \texttt{sigmoid(z) = 1 / (1 + np.exp(-z))}.
+  \item Implementar \texttt{bce(y, p\_hat)} con \texttt{np.clip} para evitar $\log(0)$.
+  \item Implementar el gradiente: $\nabla = \tfrac{1}{n}\tilde X^\top(\hat p - y)$.
+  \item \textbf{Para} $t = 1,\dots,T$:
+  \begin{enumerate}\scriptsize
+    \item $z \leftarrow \tilde X\theta$, $\hat p \leftarrow \sigma(z)$.
+    \item Guardar $\mathcal{L}^{(t)} \leftarrow \mathrm{bce}(y,\hat p)$.
+    \item $\theta \leftarrow \theta - \eta\,\tfrac{1}{n}\tilde X^\top(\hat p - y)$.
+  \end{enumerate}
+  \item Graficar $\mathcal{L}^{(t)}$ vs.\ $t$.
+  \item Graficar puntos + frontera $\tilde x^\top\theta = 0$.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab NumPy — Que deben observar}
+\temariobar{Teoria}{\textbf{Lab NumPy}}{Lab sklearn}{Entregable}
+\begin{itemize}\small
+  \item La perdida \key{decrece} al ajustar $\eta$ correctamente.
+  \item La frontera aprendida es lineal en $(x_1, x_2)$.
+  \item Con $\eta$ muy grande la perdida oscila o explota; con $\eta$ muy chico converge muy lento.
+  \item Si se cambian los datos, los coeficientes cambian pero el \textbf{patron general} (forma del gradiente, forma de la frontera) se mantiene.
+\end{itemize}
+
+\vspace{0.3em}
+{\footnotesize Esta es la misma logica que luego usan librerias y frameworks modernos; solo cambian los detalles numericos.}
+\end{frame}
+
+% =========================================================
+\section[Lab sklearn]{Lab sklearn\label{sec:lab-sklearn-w11}}
+% =========================================================
+
+\begin{frame}{Lab sklearn — Objetivos}
+\temariobar{Teoria}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\key{Meta:} llevar las ideas teoricas a la herramienta estandar y comparar con la implementacion NumPy.
+
+\vspace{0.25em}
+Modelo principal: \texttt{LogisticRegression} de \texttt{sklearn.linear\_model}.
+
+\vspace{0.25em}
+Flujo recomendado:
+\begin{enumerate}\footnotesize
+  \item \texttt{train\_test\_split} para separar entrenamiento y prueba.
+  \item \texttt{StandardScaler} dentro de un \texttt{Pipeline} (solo se ajusta con train).
+  \item Entrenar \texttt{LogisticRegression} con distintos valores de \texttt{C}.
+  \item Evaluar con \texttt{classification\_report} y \texttt{confusion\_matrix}.
+  \item Explorar thresholds distintos a $0.5$.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Parametro \texttt{C} en sklearn}
+\temariobar{Teoria}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+En \texttt{LogisticRegression}, el argumento \texttt{C} es el \textbf{inverso} de la fuerza de regularizacion:
+\[
+C \;\approx\; \frac{1}{\lambda}.
+\]
+
+\vspace{0.25em}
+Lectura practica:
+\begin{itemize}\small
+  \item \texttt{C} grande (ej.\ $100$) $\Rightarrow$ \textbf{poca} regularizacion, coeficientes parecidos a OLS.
+  \item \texttt{C} pequeno (ej.\ $0.01$) $\Rightarrow$ \textbf{mucha} regularizacion, coeficientes pequenos.
+\end{itemize}
+
+\vspace{0.25em}
+{\footnotesize Detalle importante para no confundirse: cuando Murphy habla de $\lambda$ y sklearn habla de \texttt{C}, van en \textbf{direcciones opuestas}.}
+\end{frame}
+
+\begin{frame}{Pseudocodigo — Pipeline + evaluacion}
+\temariobar{Teoria}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\footnotesize
+\textbf{Pseudocodigo (guia conceptual)}
+\begin{enumerate}\footnotesize
+  \item Cargar o generar dataset binario (\texttt{make\_classification}).
+  \item \texttt{X\_tr, X\_te, y\_tr, y\_te = train\_test\_split(...)}.
+  \item Definir un \texttt{Pipeline}:
+  \begin{enumerate}\scriptsize
+    \item \texttt{StandardScaler()}.
+    \item \texttt{LogisticRegression(C=...)}.
+  \end{enumerate}
+  \item Entrenar con \texttt{pipe.fit(X\_tr, y\_tr)}.
+  \item Obtener probabilidades: \texttt{probs = pipe.predict\_proba(X\_te)[:, 1]}.
+  \item Calcular metricas con distintos thresholds: \texttt{precision}, \texttt{recall}, \texttt{f1}, \texttt{confusion\_matrix}.
+  \item Repetir para varios \texttt{C} (ej.\ $0.01, 0.1, 1, 10, 100$) y comparar coeficientes.
+  \item (Opcional) Ajustar \texttt{LogisticRegression(multi\_class='multinomial')} en un dataset con 3 clases.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Lab sklearn — Que deben observar}
+\temariobar{Teoria}{Lab NumPy}{\textbf{Lab sklearn}}{Entregable}
+\begin{itemize}\small
+  \item Los coeficientes de sklearn (con \texttt{C} grande) se parecen a los de su implementacion NumPy.
+  \item Al bajar \texttt{C}, los $|w_j|$ se \textbf{reducen} de forma sistematica.
+  \item La matriz de confusion cambia visiblemente al mover el threshold.
+  \item El threshold ``optimo'' por F1 casi nunca es exactamente $0.5$.
+\end{itemize}
+
+\vspace{0.3em}
+{\footnotesize La meta no es buscar el mejor numero, sino entender \textbf{por que} cambia y en que direccion.}
+\end{frame}
+
+% =========================================================
+\section[Entregable]{Entregable\label{sec:entregable-w11}}
+% =========================================================
+
+\begin{frame}{Entregable — que debe incluirse}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+Notebook \texttt{week11\_logistic\_regression.ipynb} con:
+\begin{enumerate}\small
+  \item \key{Implementacion NumPy} de logistic regression binaria + entrenamiento con gradient descent.
+  \item \key{Grafica de la perdida} por iteracion.
+  \item \key{Visualizacion de la frontera de decision}.
+  \item \key{Comparacion con sklearn}: coeficientes y metricas.
+  \item \key{Experimento de regularizacion}: al menos 3 valores de \texttt{C}, con features estandarizadas.
+  \item \key{Evaluacion}: matriz de confusion, precision, recall, F1 y analisis de threshold.
+  \item \key{Reflexion breve} (5--8 oraciones) respondiendo las preguntas guia.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Entregable — preguntas guia}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+En la reflexion, responder con claridad:
+\begin{itemize}\small
+  \item ?`Que cambia cuando movemos el threshold?
+  \item ?`Que cambia cuando agregamos regularizacion?
+  \item ?`Que variables parecen mas importantes segun los coeficientes?
+  \item ?`En que situaciones accuracy puede ser \textbf{enganosa}?
+\end{itemize}
+
+\vspace{0.3em}
+{\footnotesize La reflexion se evalua por claridad de la idea, no por longitud del texto.}
+\end{frame}
+
+\begin{frame}{Cierre de la semana}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+Logistic regression conecta varias piezas del curso:
+\begin{itemize}\small
+  \item \textbf{Modelos lineales} (Semanas 7 y 9).
+  \item \textbf{Probabilidad condicional} (Semanas 2 y 3).
+  \item \textbf{Maximum likelihood estimation} (Semana 4).
+  \item \textbf{Cross-entropy} e informacion (Semana 6).
+  \item \textbf{Gradient descent} (Semana 9).
+  \item \textbf{Evaluacion de clasificadores} (Semana 5).
+\end{itemize}
+
+\vspace{0.3em}
+\begin{quote}\small
+El mismo score lineal $x^\top w + b$ que usabamos para predecir un numero ahora, pasado por sigmoid y una regla de decision, sirve para \textbf{separar clases con probabilidades interpretables}.
+\end{quote}
+\end{frame}
+
+\begin{frame}{Secciones recomendadas (PML = Murphy)}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{\textbf{Entregable}}
+\begin{itemize}\small
+  \item \key{Cap.~10 — Logistic Regression}
+  \begin{itemize}\footnotesize
+    \item \key{10.1} Introduction.
+    \item \key{10.2} Binary logistic regression.
+    \item \key{10.2.3} Maximum likelihood estimation.
+    \item \key{10.2.4} Stochastic gradient descent.
+    \item \key{10.2.8} Standardization.
+    \item \key{10.3} Multinomial logistic regression.
+  \end{itemize}
+  \item \key{Cap.~2:} \key{2.4.2} Sigmoid function; \key{2.5.2} Softmax function.
+  \item \key{Cap.~4:} \key{4.2} Maximum likelihood estimation.
+  \item \key{Cap.~5:} \key{5.1.3}--\key{5.1.4} ROC y precision--recall.
+\end{itemize}
+
+\vspace{0.2em}
+{\footnotesize Lectura opcional: \key{10.2.7} MAP estimation (no se cubre en estas slides).}
+\end{frame}
+
+% =========================================================
+\section[Apendice]{Apendice: derivacion del gradiente\label{sec:apendice-w11}}
+% =========================================================
+
+\begin{frame}{Apendice — Objetivo de la derivacion}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+Queremos deducir el gradiente de la perdida de logistic regression \textbf{paso a paso}.
+
+\vspace{0.25em}
+Para una observacion $i$:
+\[
+z_i = x_i^\top w + b,\qquad
+\hat p_i = \sigma(z_i) = \frac{1}{1+e^{-z_i}}.
+\]
+
+\vspace{0.2em}
+Perdida binary cross-entropy por observacion:
+\[
+\ell_i = -\big[\,y_i\log(\hat p_i) + (1-y_i)\log(1-\hat p_i)\,\big].
+\]
+
+\vspace{0.2em}
+Meta: obtener $\dfrac{\partial \ell_i}{\partial w}$ y $\dfrac{\partial \ell_i}{\partial b}$.
+\end{frame}
+
+\begin{frame}{Apendice — Derivada respecto a $\hat p_i$}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+Partimos de
+\[
+\ell_i = -\big[\,y_i\log(\hat p_i) + (1-y_i)\log(1-\hat p_i)\,\big].
+\]
+
+\vspace{0.2em}
+Derivamos respecto a $\hat p_i$:
+\[
+\frac{\partial \ell_i}{\partial \hat p_i}
+= -\frac{y_i}{\hat p_i} + \frac{1-y_i}{1-\hat p_i}.
+\]
+
+\vspace{0.25em}
+Origen termino a termino:
+\begin{itemize}\footnotesize
+  \item $\tfrac{\mathrm{d}}{\mathrm{d}\hat p_i}\big[-y_i\log\hat p_i\big] = -\tfrac{y_i}{\hat p_i}$.
+  \item $\tfrac{\mathrm{d}}{\mathrm{d}\hat p_i}\big[-(1-y_i)\log(1-\hat p_i)\big] = +\tfrac{1-y_i}{1-\hat p_i}$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Apendice — Derivada de sigmoid}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+Para $\hat p_i = \sigma(z_i) = \dfrac{1}{1+e^{-z_i}}$:
+\[
+\frac{\partial \hat p_i}{\partial z_i} = \hat p_i\,(1 - \hat p_i).
+\]
+
+\vspace{0.3em}
+\textbf{Idea rapida:} derivando directamente,
+\[
+\sigma'(z) = \frac{e^{-z}}{(1+e^{-z})^2}
+= \frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}}
+= \sigma(z)\,\big(1-\sigma(z)\big).
+\]
+
+\vspace{0.3em}
+\key{Importancia:} esta identidad es la que va a hacer que el gradiente final tenga una forma \textbf{muy simple}.
+\end{frame}
+
+\begin{frame}{Apendice — Regla de la cadena sobre $z_i$}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+Por regla de la cadena:
+\[
+\frac{\partial \ell_i}{\partial z_i}
+= \frac{\partial \ell_i}{\partial \hat p_i}\cdot\frac{\partial \hat p_i}{\partial z_i}.
+\]
+
+\vspace{0.2em}
+Sustituyendo:
+\[
+\frac{\partial \ell_i}{\partial z_i}
+= \left(-\frac{y_i}{\hat p_i} + \frac{1-y_i}{1-\hat p_i}\right)\hat p_i\,(1-\hat p_i).
+\]
+
+\vspace{0.2em}
+Distribuyendo $\hat p_i(1-\hat p_i)$:
+\[
+\frac{\partial \ell_i}{\partial z_i}
+= -y_i(1-\hat p_i) + (1-y_i)\hat p_i.
+\]
+
+\vspace{0.2em}
+Expandiendo:
+\[
+= -y_i + y_i\hat p_i + \hat p_i - y_i\hat p_i
+= \hat p_i - y_i.
+\]
+
+\vspace{0.2em}
+\begin{block}{Resultado clave}
+\centering
+$\displaystyle \frac{\partial \ell_i}{\partial z_i} = \hat p_i - y_i.$
+\end{block}
+\end{frame}
+
+\begin{frame}{Apendice — Gradiente respecto a $w$ y $b$}
+\temariobar{Teoria}{Lab NumPy}{Lab sklearn}{Entregable}
+Como $z_i = x_i^\top w + b$:
+\[
+\frac{\partial z_i}{\partial w} = x_i,\qquad
+\frac{\partial z_i}{\partial b} = 1.
+\]
+
+\vspace{0.2em}
+Por regla de la cadena:
+\[
+\frac{\partial \ell_i}{\partial w}
+= (\hat p_i - y_i)\,x_i,
+\qquad
+\frac{\partial \ell_i}{\partial b}
+= \hat p_i - y_i.
+\]
+
+\vspace{0.2em}
+Usando la perdida \textbf{promedio} sobre $n$ observaciones $\mathcal{L} = \tfrac{1}{n}\sum_i\ell_i$:
+\[
+\nabla_w \mathcal{L}
+= \frac{1}{n}\sum_{i=1}^n (\hat p_i - y_i)\,x_i
+= \frac{1}{n}\,X^\top(\hat p - y),
+\]
+\[
+\nabla_b \mathcal{L}
+= \frac{1}{n}\sum_{i=1}^n (\hat p_i - y_i).
+\]
+
+\vspace{0.2em}
+\key{Mensaje final:} el gradiente tiene la forma \textbf{``error probabilistico''} $(\hat p - y)$ \textbf{multiplicado por las features}.
+\end{frame}

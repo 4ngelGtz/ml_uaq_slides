@@ -9,6 +9,7 @@ WEEK04FIGSCRIPT=scripts/week04_make_mle_erm_figs.py
 WEEK06FIGSCRIPT=scripts/week06_make_entropy_coin_fig.py
 WEEK07FIGSCRIPT=scripts/week07_make_linear_algebra_figs.py
 WEEK09FIGSCRIPT=scripts/week09_make_figs.py
+WEEK11FIGSCRIPT=scripts/week11_make_figs.py
 
 # Prefer a local venv if present (avoids global Python deps)
 PYTHON:=$(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
@@ -63,6 +64,18 @@ WEEK09FIGS=$(FIGDIR)/week09_ols_line_and_residuals.png \
      $(FIGDIR)/week09_poly_underfit_overfit.png \
      $(FIGDIR)/week09_bias_variance_curve.png
 
+WEEK11FIGS=$(FIGDIR)/week11_class_scatter.png \
+     $(FIGDIR)/week11_linreg_for_classification.png \
+     $(FIGDIR)/week11_sigmoid.png \
+     $(FIGDIR)/week11_decision_boundary.png \
+     $(FIGDIR)/week11_cross_entropy.png \
+     $(FIGDIR)/week11_gd_learning_rate.png \
+     $(FIGDIR)/week11_gd_vs_sgd.png \
+     $(FIGDIR)/week11_l1_vs_l2.png \
+     $(FIGDIR)/week11_threshold_tuning.png \
+     $(FIGDIR)/week11_softmax_example.png \
+     $(FIGDIR)/week11_multiclass_regions.png
+
 all: $(OUTDIR)/main.pdf
 
 # 1) Regla: generar figuras
@@ -99,13 +112,18 @@ $(WEEK09FIGS): $(WEEK09FIGSCRIPT)
 	mkdir -p $(FIGDIR)
 	MPLCONFIGDIR="$(CURDIR)/.mplcache" $(PYTHON) $(WEEK09FIGSCRIPT)
 
+# Week 11 figures (logistic regression)
+$(WEEK11FIGS): $(WEEK11FIGSCRIPT)
+	mkdir -p $(FIGDIR)
+	MPLCONFIGDIR="$(CURDIR)/.mplcache" $(PYTHON) $(WEEK11FIGSCRIPT)
+
 # 2) Regla: compilar PDF (depende de figuras y contenido)
-$(OUTDIR)/main.pdf: $(MAIN) $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS) slides/week01/week01_content.tex slides/week02/week02_probability_univariate.tex slides/week03/week03_probability_multivariate.tex slides/week04/week04_statistics_mle_erm.tex slides/week07/week07_linear_algebra.tex slides/week09/week09_linear_regression_regularization.tex
+$(OUTDIR)/main.pdf: $(MAIN) $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS) $(WEEK11FIGS) slides/week01/week01_content.tex slides/week02/week02_probability_univariate.tex slides/week03/week03_probability_multivariate.tex slides/week04/week04_statistics_mle_erm.tex slides/week07/week07_linear_algebra.tex slides/week09/week09_linear_regression_regularization.tex slides/week11/week11_logistic_regression.tex
 	mkdir -p $(OUTDIR)
 	$(TEX) -interaction=nonstopmode -halt-on-error -output-directory=$(OUTDIR) $(MAIN)
 	$(TEX) -interaction=nonstopmode -halt-on-error -output-directory=$(OUTDIR) $(MAIN)
 
-figs: $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS)
+figs: $(FIGS) $(WEEK02FIG) $(WEEK03FIGS) $(WEEK04FIGS) $(WEEK06FIGS) $(WEEK07FIGS) $(WEEK09FIGS) $(WEEK11FIGS)
 
 clean:
 	rm -rf $(OUTDIR)/*
