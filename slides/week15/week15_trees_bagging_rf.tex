@@ -1,0 +1,1140 @@
+% slides/week15/week15_trees_bagging_rf.tex
+% Semana 15 - Arboles, bagging y random forests
+
+% =========================
+% Metadata
+% =========================
+\title[Semana 15: Arboles, bagging y RF]{Semana 15 — Arboles, bagging y random forests}
+\subtitle{De reglas simples a ensambles robustos}
+\author{Curso de Machine Learning — UAQ (Matematicas Aplicadas)}
+\institute{Libro base: \textit{Probabilistic Machine Learning: An Introduction} (Kevin P. Murphy), Cap.~18}
+\date{Semana 15}
+
+% =========================
+% Helpers (consistentes con semanas anteriores)
+% =========================
+\providecommand{\key}[1]{\textbf{#1}}
+\providecommand{\term}[1]{\textit{#1}}
+\providecommand{\temariobar}[4]{}
+
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.84\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertsectionhead
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.16\paperwidth,ht=2.25ex,dp=1ex,center]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+\AtBeginSection[]{%
+  \begin{frame}{Semana 15 — mapa del temario (progreso)}
+  \temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+  \vspace{0.3em}
+  \begin{columns}[t]
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Sesion 1:} Arboles y CART
+    \item \textbf{Sesion 2:} Sobreajuste y bagging
+  \end{itemize}
+  \column{0.5\textwidth}
+  \begin{itemize}
+    \item \textbf{Sesion 3:} Random forests
+    \item \textbf{Sesion 4:} Interpretabilidad y entrega
+  \end{itemize}
+  \end{columns}
+  \end{frame}%
+}
+
+% =========================================================
+\part{Semana 15}
+% =========================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =========================================================
+% MAPA DE LA SEMANA
+% =========================================================
+\begin{frame}{Mapa de la Semana 15}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{enumerate}\small
+  \item Arboles de decision: que aprenden y como predicen.
+  \item CART: como se eligen los splits (Gini, varianza).
+  \item Sobreajuste, profundidad y regularizacion de un arbol.
+  \item Bagging y bootstrap: por que promediar reduce varianza.
+  \item Out-of-bag error como validacion interna.
+  \item Random forests: bagging mas seleccion aleatoria de features.
+  \item Comparacion con baselines y eleccion de hiperparametros.
+  \item Feature importance, permutation importance y partial dependence.
+  \item Cierre: que NO concluir de un random forest.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Convencion de notacion}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{itemize}\small
+  \item $x_i\in\mathbb{R}^d$: vector de \term{features} de la observacion $i$.
+  \item $X\in\mathbb{R}^{n\times d}$: matriz de diseno; $y$ vector de etiquetas/respuestas.
+  \item En clasificacion, $K$: numero de clases; $p_{k,t}$: proporcion de la clase $k$ en el nodo $t$.
+  \item En regresion, $R_m$: region (hoja) $m$; $\bar{y}_{R_m}$: promedio de $y$ en esa region.
+  \item $B$: numero de arboles en un ensamble; $\hat f_b(x)$: prediccion del $b$-esimo arbol.
+\end{itemize}
+\vspace{0.25em}
+{\footnotesize En Murphy aparecen $N$, $D$ y $T$ en lugar de $n$, $d$ y $B$; las formulas son las mismas.}
+\end{frame}
+
+% =========================================================
+\section[Arboles y CART]{Sesion 1 — Arboles de decision y CART\label{sec:trees-w15}}
+% =========================================================
+
+\subsection{Donde estamos en el curso}
+
+\begin{frame}{?`Donde estamos en el curso?}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+Hasta ahora hemos visto modelos con \key{forma funcional rigida}:
+\begin{itemize}\small
+  \item Regresion lineal: $\hat y = x^\top w + b$.
+  \item Logistic regression: $p(y=1\mid x) = \sigma(x^\top w + b)$.
+\end{itemize}
+
+\vspace{0.3em}
+Esa rigidez es buena para interpretar coeficientes, pero limita lo que podemos modelar:
+\begin{itemize}\small
+  \item Fronteras lineales solamente.
+  \item Para capturar una interaccion como ``ingreso bajo $\wedge$ deuda alta'' hay que escribirla a mano.
+\end{itemize}
+
+\vspace{0.3em}
+\begin{block}{Idea de la semana}
+\small
+Pasamos a una familia distinta: modelos que aprenden \key{reglas tipo if-then-else} sobre el espacio de features. No los disenamos a mano; los \emph{aprende} el algoritmo.
+\end{block}
+\end{frame}
+
+\begin{frame}{Motivacion: cuando una linea recta no basta}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\small
+A la izquierda, logistic regression solo puede dibujar una recta.
+
+\vspace{0.25em}
+A la derecha, un arbol va dividiendo el plano con cortes \term{axis-aligned} (paralelos a los ejes) y captura la curvatura del problema.
+
+\vspace{0.3em}
+\key{Mensaje:} para datos con estructura no lineal e interacciones, un arbol puede ser mucho mejor sin que nosotros propongamos features cuadraticas o productos.
+\end{column}
+\begin{column}{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{week15_frontera_logistic_vs_tree.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\subsection{Arboles de decision}
+
+\begin{frame}{?`Que es un arbol de decision?}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Arbol de decision:} modelo predictivo que divide \emph{recursivamente} el espacio de features con preguntas simples del tipo \texttt{x\_j < umbral}. Cada nodo interno contiene una pregunta; cada rama, una respuesta; cada hoja, una prediccion.
+\end{block}
+
+\vspace{0.3em}
+Ejemplo conceptual:
+\begin{itemize}\small
+  \item Pregunta en la raiz: ?`edad $< 30$?
+  \item Si \emph{si}: ?`ingreso $< 20\text{k}$? $\rightarrow$ alto / medio.
+  \item Si \emph{no}: bajo riesgo.
+\end{itemize}
+
+\vspace{0.3em}
+{\footnotesize Geometricamente, el arbol divide $\mathbb{R}^d$ en \key{rectangulos} (regiones $R_m$). En cada rectangulo, el modelo predice una sola cosa.}
+\end{frame}
+
+\begin{frame}{Como predice un arbol}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+Para una observacion nueva $x$, la prediccion es:
+\begin{enumerate}\small
+  \item Empezar en la raiz.
+  \item En cada nodo, seguir la rama indicada por la respuesta a la pregunta.
+  \item Al llegar a una hoja, devolver la prediccion almacenada en esa hoja.
+\end{enumerate}
+
+\vspace{0.3em}
+Ejemplo de riesgo crediticio:
+\begin{itemize}\small
+  \item Si \texttt{atrasos\_previos} $> 0$: hoja \emph{riesgo alto}.
+  \item Si no, y \texttt{deuda/ingreso} $> 0.5$: hoja \emph{riesgo medio}.
+  \item En otro caso: hoja \emph{riesgo bajo}.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Mensaje:} la inferencia es solo seguir un camino. Lo que cuesta es \emph{construir} el arbol.
+\end{frame}
+
+\begin{frame}{CART: Classification And Regression Trees}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{CART} es la familia de algoritmos de Murphy (Cap.~18.1) que construye arboles binarios (cada nodo se parte en dos) para tareas de \emph{clasificacion} y \emph{regresion}.
+\end{block}
+
+\vspace{0.3em}
+?`Que predice una hoja?
+\begin{itemize}\small
+  \item \key{Clasificacion:} la clase mayoritaria, o la \emph{distribucion} de clases (probabilidades).
+  \item \key{Regresion:} el promedio $\bar y$ de los valores de $y$ que caen en esa hoja.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Idea central de construccion:} en cada nodo, buscar la combinacion (variable, umbral) que produce la \textbf{mejor separacion} de los datos.
+\end{frame}
+
+\subsection{Como se construye un arbol}
+
+\begin{frame}{Como se construye un arbol — pregunta clave}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{block}{Pregunta central}
+\small
+?`Que split deja los grupos hijos \emph{mas puros} que el grupo original?
+\end{block}
+
+\vspace{0.3em}
+Para responder necesitamos:
+\begin{itemize}\small
+  \item Una \key{medida de impureza} en cada nodo.
+  \item Una regla para \key{combinar} las impurezas de los dos hijos.
+  \item Un criterio: aceptar el split que \emph{mas reduce} esa impureza.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Estrategia:} \emph{greedy}, de arriba hacia abajo. En cada nodo se elige el mejor split \textbf{localmente}; no se busca el optimo global del arbol completo.
+\end{frame}
+
+\begin{frame}{Impureza en clasificacion: indice Gini}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Pureza} de un nodo $t$: que tanto se concentran sus ejemplos en una sola clase. Un nodo es \emph{puro} si todos sus ejemplos son de la misma clase.
+\end{block}
+
+\vspace{0.3em}
+\key{Indice Gini:}
+\[
+\mathrm{Gini}(t) \;=\; 1 - \sum_{k=1}^{K} p_{k,t}^{\,2}.
+\]
+
+\vspace{0.2em}
+?`Que significa cada simbolo?
+\begin{itemize}\small
+  \item $t$: nodo actual.
+  \item $K$: numero de clases.
+  \item $p_{k,t}$: proporcion de ejemplos de la clase $k$ dentro del nodo $t$.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Lectura:} mientras mas concentrada este una sola clase, mas grande sera $\sum_k p_{k,t}^2$ y mas chico Gini. Gini es \emph{cero} cuando el nodo es totalmente puro.
+\end{frame}
+
+\begin{frame}{Ejemplo numerico de Gini}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+Nodo padre con 10 observaciones: 5 positivas, 5 negativas.
+\[
+\mathrm{Gini}_{\text{padre}} = 1 - (0.5^2 + 0.5^2) = 0.5.
+\]
+
+\vspace{0.2em}
+Split candidato:
+\begin{itemize}\small
+  \item Hijo izquierdo: 4 positivas, 1 negativa $\Rightarrow$ $1-(0.8^2+0.2^2) = 0.32$.
+  \item Hijo derecho: 1 positiva, 4 negativas $\Rightarrow$ $1-(0.2^2+0.8^2) = 0.32$.
+\end{itemize}
+
+\vspace{0.2em}
+Promedio ponderado por tamano de hijo:
+\[
+\frac{5}{10}(0.32) + \frac{5}{10}(0.32) = 0.32.
+\]
+
+\vspace{0.2em}
+Ganancia del split:
+\[
+\Delta = 0.50 - 0.32 = 0.18.
+\]
+
+\vspace{0.2em}
+\key{Mensaje:} el split es util porque reduce la impureza promedio. CART elige el split con mayor $\Delta$.
+\end{frame}
+
+\begin{frame}{Arboles para regresion}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+En regresion, una hoja predice el promedio $\bar y_{R_m}$ de los valores de $y$ que caen en su region. La impureza se mide con la \key{varianza dentro de la hoja}.
+\end{block}
+
+\vspace{0.3em}
+Criterio de split (suma de errores cuadraticos dentro de cada region):
+\[
+\sum_{i \in R_m} \big(y_i - \bar y_{R_m}\big)^2.
+\]
+
+\vspace{0.2em}
+?`Que significa cada simbolo?
+\begin{itemize}\small
+  \item $R_m$: region (hoja) $m$.
+  \item $\bar y_{R_m}$: promedio de los $y_i$ dentro de esa region.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Lectura:} buscamos splits que dejen hojas \emph{homogeneas} en $y$. Si los $y_i$ de una region estan todos cerca de su promedio, esa hoja es ``buena''.
+\end{frame}
+
+\begin{frame}{Visualizacion: como un arbol parte el espacio}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+\centering
+\includegraphics[width=0.95\linewidth,height=0.7\textheight,keepaspectratio]{week15_tree_depth_comparison.png}
+
+\vspace{0.2em}
+{\footnotesize Cada split anade una particion rectangular. Con \texttt{max\_depth} mayor, la frontera se vuelve mas detallada y empieza a seguir el ruido.}
+\end{frame}
+
+\begin{frame}{Cierre Sesion 1}
+\temariobar{\textbf{Sesion 1}}{Sesion 2}{Sesion 3}{Sesion 4}
+Resumen:
+\begin{itemize}\small
+  \item Un arbol aprende una secuencia de \key{reglas if-then-else} sobre las features.
+  \item Los splits se eligen \key{reduciendo la impureza}.
+  \item En clasificacion: \emph{Gini} (o entropia, equivalente conceptual).
+  \item En regresion: \emph{varianza dentro de la hoja}.
+  \item La \key{profundidad} controla la complejidad.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Mini actividad}
+\small
+Considera un nodo con 8 positivos y 2 negativos.
+\begin{itemize}\footnotesize
+  \item Calcula su Gini.
+  \item Propon un split que produzca un hijo izquierdo (5 pos, 0 neg) y un hijo derecho (3 pos, 2 neg).
+  \item Calcula el Gini ponderado del split y la ganancia.
+\end{itemize}
+\end{block}
+\end{frame}
+
+% =========================================================
+\section[Bagging]{Sesion 2 — Sobreajuste y bagging\label{sec:bagging-w15}}
+% =========================================================
+
+\begin{frame}{Recap Sesion 1}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{itemize}\small
+  \item Arbol $=$ reglas $+$ splits $+$ hojas.
+  \item CART elige cada split de forma greedy maximizando ganancia de pureza.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Pregunta para hoy}
+\small
+Un arbol pequeno puede ser \emph{insuficiente}; un arbol profundo puede ser \emph{demasiado}. ?`Como evitamos los dos extremos sin renunciar a la flexibilidad?
+\end{block}
+\end{frame}
+
+\subsection{Profundidad y sobreajuste}
+
+\begin{frame}{Profundidad y sobreajuste}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\small
+\begin{itemize}\footnotesize
+  \item \texttt{max\_depth} bajo: arbol simple, alto bias.
+  \item \texttt{max\_depth} alto: arbol flexible, alta varianza.
+  \item Arbol muy profundo: \key{memoriza} ruido del train.
+\end{itemize}
+
+\vspace{0.3em}
+Conexion con bias-varianza (Semana 9):
+\begin{itemize}\footnotesize
+  \item Arbol pequeno $\to$ \key{alto bias}, baja varianza.
+  \item Arbol profundo $\to$ \key{bajo bias}, alta varianza.
+\end{itemize}
+\end{column}
+\begin{column}{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{week15_overfitting_tree_depth.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{?`Que significa ``bajo bias, alta varianza'' aqui?}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Recordatorio}
+\small
+\key{Bias:} cuanto se equivoca \emph{en promedio} el modelo (que tan lejos esta su prediccion tipica de la verdad).
+\quad
+\key{Varianza:} cuanto cambia el modelo si entrenamos con \emph{otra muestra} del mismo problema.
+\end{block}
+
+\vspace{0.25em}
+\textbf{Ejemplo concreto.} Tenemos $200$ clientes y queremos predecir \texttt{default}. Imaginemos que tomamos \emph{tres} muestras distintas del mismo problema y entrenamos un arbol en cada una:
+
+\vspace{0.2em}
+\begin{itemize}\footnotesize
+  \item \key{Arbol sin podar} (\texttt{max\_depth=None}):
+  \begin{itemize}\scriptsize
+    \item \key{Bajo bias:} en cada muestra logra $\approx 100\%$ accuracy en \emph{su} train.
+    \item \key{Alta varianza:} cada muestra produce un \textbf{arbol distinto}: distintas variables en la raiz, distintos umbrales, distintas hojas. Si llega un cliente nuevo, las tres versiones pueden \emph{contradecirse}.
+  \end{itemize}
+  \item \key{Arbol corto} (\texttt{max\_depth=2}):
+  \begin{itemize}\scriptsize
+    \item \key{Alto bias:} no llega a $100\%$ ni en su propio train; se queda en, digamos, $\approx 78\%$ y deja patrones sin capturar.
+    \item \key{Baja varianza:} las tres versiones son \emph{casi identicas}; misma raiz, hojas muy parecidas. Frente al cliente nuevo, las tres dicen lo mismo.
+  \end{itemize}
+\end{itemize}
+
+\vspace{0.15em}
+\key{Intuicion:} el arbol profundo es como un alumno que se memoriza el examen del año pasado. Acierta todo \emph{ese} examen, pero su respuesta cambia mucho si le cambias las preguntas.
+\end{frame}
+
+\begin{frame}{Sesgo-varianza, visualizado en arboles}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\centering
+\includegraphics[width=0.88\linewidth,height=0.66\textheight,keepaspectratio]{week15_bias_variance_trees.png}
+
+\vspace{0.15em}
+{\scriptsize Mismo problema, $4$ remuestreos con reemplazo. Arriba: arboles de profundidad maxima $2$ producen fronteras casi identicas (baja varianza, alto sesgo). Abajo: arboles sin podar producen fronteras muy distintas entre si (alta varianza, bajo sesgo).}
+\end{frame}
+
+\begin{frame}{Regularizacion en arboles}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Regularizar un arbol:} controlar su crecimiento para evitar que aprenda demasiadas reglas y termine memorizando el train.
+\end{block}
+
+\vspace{0.25em}
+Hiperparametros tipicos en sklearn:
+\begin{itemize}\small
+  \item \texttt{max\_depth}: profundidad maxima del arbol.
+  \item \texttt{min\_samples\_split}: minimo de observaciones para considerar un split.
+  \item \texttt{min\_samples\_leaf}: minimo de observaciones por hoja.
+  \item \texttt{max\_leaf\_nodes}: limite total de hojas.
+  \item \texttt{ccp\_alpha}: poda por complejidad de costo (cost-complexity pruning).
+\end{itemize}
+
+\vspace{0.25em}
+\key{Mensaje:} regularizar un arbol \emph{no} es penalizar coeficientes como en ridge o lasso. Aqui no hay coeficientes; lo que se controla es \emph{cuantas reglas} puede aprender.
+\end{frame}
+
+\begin{frame}{Pros y contras de un arbol individual}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\small
+\textbf{Pros}
+\begin{itemize}\footnotesize
+  \item Faciles de visualizar si son pequenos.
+  \item Capturan no linealidades.
+  \item Capturan interacciones automaticamente.
+  \item No requieren escalar variables.
+  \item Sirven para clasificacion y regresion.
+\end{itemize}
+\end{column}
+\begin{column}{0.50\textwidth}
+\small
+\textbf{Contras}
+\begin{itemize}\footnotesize
+  \item Son \key{inestables}: un pequeno cambio en datos cambia el arbol.
+  \item Sobreajustan facilmente.
+  \item Fronteras rectangulares pueden parecer artificiales.
+  \item Un solo arbol rara vez es el mejor modelo.
+\end{itemize}
+\end{column}
+\end{columns}
+
+\vspace{0.4em}
+\begin{block}{Pregunta natural}
+\small
+Si un arbol es inestable, ?`que pasa si entrenamos \emph{muchos} arboles distintos y promediamos sus predicciones?
+\end{block}
+\end{frame}
+
+\subsection{Ensembles y bagging}
+
+\begin{frame}{Ensemble learning}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Ensamble:} modelo que combina varios modelos base (\term{learners}) para producir una sola prediccion agregada.
+\end{block}
+
+\vspace{0.3em}
+Para regresion, prediccion del ensamble:
+\[
+\hat f(x) \;=\; \frac{1}{B}\sum_{b=1}^{B} \hat f_b(x).
+\]
+
+\vspace{0.2em}
+Para clasificacion:
+\begin{itemize}\small
+  \item \key{Voto mayoritario:} la clase que recibe mas votos entre los $\hat f_b$.
+  \item \key{Promedio de probabilidades:} promediar $p_b(y=k\mid x)$ y luego umbralizar.
+\end{itemize}
+
+\vspace{0.25em}
+\key{Idea clave:} no necesitamos que cada $\hat f_b$ sea perfecto. Necesitamos que sus errores \textbf{no sean exactamente los mismos}, para que al promediar se cancelen.
+\end{frame}
+
+\begin{frame}{Bootstrap}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Muestra bootstrap:} muestra del \emph{mismo tamano} que el dataset original, tomada \textbf{con reemplazo}.
+\end{block}
+
+\vspace{0.3em}
+Ejemplo:
+\begin{itemize}\small
+  \item Original: $[1,\,2,\,3,\,4,\,5]$.
+  \item Una muestra bootstrap: $[2,\,2,\,5,\,1,\,4]$.
+\end{itemize}
+
+\vspace{0.3em}
+Observacion importante:
+\begin{itemize}\small
+  \item Algunas observaciones se \key{repiten} en la muestra.
+  \item Otras quedan \key{fuera} (esas seran \term{out-of-bag}).
+  \item En promedio, $\sim$36.8\% de las observaciones quedan fuera de cada muestra bootstrap.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bagging}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Bagging} (\textit{bootstrap aggregating}): entrenar $B$ modelos sobre $B$ muestras bootstrap distintas del dataset y luego \emph{agregar} sus predicciones.
+\end{block}
+
+\vspace{0.3em}
+Receta general (Murphy 18.3):
+\begin{enumerate}\small
+  \item Tomar una muestra bootstrap del dataset.
+  \item Entrenar un modelo base (tipicamente un \key{arbol profundo}).
+  \item Repetir $B$ veces.
+  \item Promediar predicciones (regresion) o usar voto mayoritario (clasificacion).
+\end{enumerate}
+
+\vspace{0.3em}
+\key{Mensaje:} bagging \emph{no} reduce el bias. Lo que reduce es la \key{varianza} del modelo final, sobre todo cuando los modelos base son inestables (como los arboles profundos).
+\end{frame}
+
+\begin{frame}{Por que bagging reduce varianza (intuicion)}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+Imagina $B$ predicciones $\hat f_1(x),\dots,\hat f_B(x)$ con varianza $\sigma^2$ cada una.
+
+\vspace{0.3em}
+Si fueran \emph{independientes}, la varianza del promedio seria
+\[
+\Var\!\left[\frac{1}{B}\sum_b \hat f_b(x)\right] = \frac{\sigma^2}{B}.
+\]
+
+\vspace{0.3em}
+En la practica los arboles \key{no} son independientes (comparten datos parecidos), pero igual:
+\begin{itemize}\small
+  \item Mientras menos correlacionados esten, mas baja la varianza al promediar.
+  \item Mientras mas grande $B$, mas estable la prediccion final.
+\end{itemize}
+
+\vspace{0.3em}
+{\footnotesize La derivacion formal con correlacion $\rho$ esta en el apendice. Por ahora basta la idea: \textbf{promediar muchos modelos parecidos pero no identicos} estabiliza la prediccion.}
+\end{frame}
+
+\begin{frame}{Out-of-bag (OOB) error}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Observaciones out-of-bag} (OOB): aquellas que \emph{no} fueron usadas para entrenar un arbol especifico (porque no aparecieron en su muestra bootstrap).
+\end{block}
+
+\vspace{0.3em}
+Idea:
+\begin{itemize}\small
+  \item Para cada observacion $i$, identificar los arboles que \emph{no} la vieron en entrenamiento.
+  \item Predecir $y_i$ usando solo esos arboles.
+  \item Comparar con $y_i$ real.
+\end{itemize}
+
+\vspace{0.3em}
+\begin{block}{Definicion}
+\small
+\key{OOB error / OOB score:} estimacion del desempeno fuera del train, calculada \emph{durante} el entrenamiento, sin necesidad de un set de validacion adicional.
+\end{block}
+
+\vspace{0.2em}
+{\footnotesize En la practica, el OOB score suele ser parecido al test score y permite \emph{validacion gratis} cuando los datos son escasos.}
+\end{frame}
+
+\begin{frame}{Lab conceptual: bootstrap + bagging}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\centering
+\includegraphics[width=0.95\linewidth,height=0.65\textheight,keepaspectratio]{week15_bagging_bootstrap_demo.png}
+
+\vspace{0.2em}
+{\footnotesize Tres arboles distintos entrenados sobre tres muestras bootstrap. Sus fronteras son notoriamente diferentes; el promedio (derecha) es mas suave y estable.}
+\end{frame}
+
+\begin{frame}{Cierre Sesion 2}
+\temariobar{Sesion 1}{\textbf{Sesion 2}}{Sesion 3}{Sesion 4}
+\begin{itemize}\small
+  \item Un arbol profundo tiene \key{baja bias} y \key{alta varianza}.
+  \item Bagging usa \key{bootstrap} para entrenar muchos arboles parecidos pero no identicos.
+  \item Promediar reduce \key{varianza}, no bias.
+  \item OOB es una validacion interna casi gratis.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Mini actividad}
+\small
+Toma la lista $[A,B,C,D,E]$ y simula 3 muestras bootstrap de tamano 5. Para cada muestra:
+\begin{itemize}\footnotesize
+  \item Marca que letras se repiten y cuales quedan fuera.
+  \item Verifica empiricamente que el promedio de letras fuera de bag se acerca a $\approx 36.8\%$.
+\end{itemize}
+\end{block}
+\end{frame}
+
+% =========================================================
+\section[Random forests]{Sesion 3 — Random forests y comparacion\label{sec:rf-w15}}
+% =========================================================
+
+\begin{frame}{Recap Sesion 2}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+Bagging $=$ muchos arboles entrenados sobre muestras bootstrap del dataset.
+
+\vspace{0.4em}
+\begin{block}{Pregunta para hoy}
+\small
+Si una sola feature es muy predictiva, casi todos los arboles del bagging la usaran cerca de la raiz. Entonces los arboles se \key{parecen demasiado entre si}. ?`Como conseguimos arboles \emph{buenos pero diversos}?
+\end{block}
+\end{frame}
+
+\subsection{De bagging a random forest}
+
+\begin{frame}{Random forest}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\begin{block}{Definicion}
+\small
+\key{Random forest} (Murphy 18.4): coleccion de arboles entrenados con bagging \textbf{y ademas} con \key{aleatoriedad en las features candidatas} en cada split.
+\end{block}
+
+\vspace{0.3em}
+Diferencia clave:
+\begin{itemize}\small
+  \item \textbf{Bagging:} muestra bootstrap distinta en cada arbol.
+  \item \textbf{Random forest:} muestra bootstrap distinta \emph{mas} subconjunto aleatorio de features cada vez que se decide un split.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Efecto:} ningun arbol puede ``apoyarse demasiado'' en una unica feature dominante. Esto fuerza diversidad y reduce la \key{correlacion} entre arboles.
+\end{frame}
+
+\begin{frame}{Por que ayuda \texttt{max\_features}}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+En cada nodo, random forest no permite que todas las features compitan: solo una muestra aleatoria de tamano \texttt{max\_features}.
+
+\vspace{0.3em}
+Consecuencias:
+\begin{itemize}\small
+  \item A veces la feature ``estrella'' \emph{no esta disponible} y el arbol explora otra ruta.
+  \item Los arboles pueden quedar peor \emph{individualmente}, pero como ensamble son mejores.
+  \item Se rompe la dependencia excesiva sobre una sola variable.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Mensaje:} random forest gana porque sus arboles \textbf{piensan distinto}, no porque cada arbol sea mejor.
+\end{frame}
+
+\begin{frame}{Bias-varianza en random forests}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\begin{itemize}\small
+  \item Arbol individual profundo: \key{bajo bias}, \key{alta varianza}.
+  \item Bagging: misma bias, varianza reducida.
+  \item Random forest: misma bias, varianza reducida \emph{mas} y de forma \emph{mas estable} porque los arboles estan menos correlacionados.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Frase para recordar}
+\small
+Random forest \textbf{no} hace arboles pequenos. Hace muchos arboles grandes, pero \emph{menos correlacionados entre si}.
+\end{block}
+\end{frame}
+
+\subsection{Hiperparametros y comparacion}
+
+\begin{frame}{Hiperparametros principales (sklearn)}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\begin{itemize}\small
+  \item \texttt{n\_estimators}: numero de arboles $B$.
+  \item \texttt{max\_depth}: profundidad maxima.
+  \item \texttt{min\_samples\_leaf}: tamano minimo de hoja.
+  \item \texttt{max\_features}: variables candidatas por split (clave para diversidad).
+  \item \texttt{bootstrap}: si se usan muestras bootstrap (default \texttt{True}).
+  \item \texttt{oob\_score}: si se estima el desempeno OOB.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Mensaje:} en random forest, \texttt{max\_features} es \emph{decisivo}. Reglas tipicas:
+\begin{itemize}\footnotesize
+  \item Clasificacion: \texttt{max\_features = sqrt(d)}.
+  \item Regresion: \texttt{max\_features = d/3}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Comparacion: arbol vs bagging vs random forest}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\centering
+\small
+\begin{tabular}{@{}lp{3.0cm}p{2.6cm}p{2.6cm}@{}}
+\toprule
+\textbf{Modelo} & \textbf{Idea} & \textbf{Ventaja} & \textbf{Riesgo} \\
+\midrule
+Arbol unico   & Una secuencia de reglas                          & Interpretable             & Alta varianza \\
+Bagging       & Promedio de arboles bootstrap                    & Reduce varianza           & Arboles parecidos \\
+Random forest & Bagging $+$ seleccion aleatoria de features      & Mas diversidad            & Menos interpretable que un arbol \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.6em}
+\begin{block}{Heuristica practica}
+\small
+Para datos \emph{tabulares}, random forest es un \key{baseline muy fuerte}. Casi siempre mejora a un arbol unico y suele ser competitivo contra modelos mas complejos.
+\end{block}
+\end{frame}
+
+\begin{frame}{Random forest vs un solo arbol}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\centering
+\includegraphics[width=0.85\linewidth,height=0.7\textheight,keepaspectratio]{week15_rf_vs_tree_boundary.png}
+
+\vspace{0.2em}
+{\footnotesize El arbol unico produce fronteras muy ``recortadas''. El random forest, al promediar 200 arboles, suaviza la frontera y la hace menos sensible al ruido.}
+\end{frame}
+
+\begin{frame}{Numero de arboles y OOB score}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\small
+\begin{itemize}\footnotesize
+  \item Pocos arboles: la prediccion del ensamble \emph{varia} mucho entre semillas.
+  \item Mas arboles $\Rightarrow$ ensamble mas \key{estable}.
+  \item Despues de cierto $B$, agregar mas no mejora; solo cuesta tiempo.
+\end{itemize}
+
+\vspace{0.4em}
+\key{Importante:} agregar arboles \textbf{no} corrige problemas como leakage o un set de validacion mal armado. Solo estabiliza el promedio.
+\end{column}
+\begin{column}{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{week15_rf_n_estimators_oob.png}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Cierre Sesion 3}
+\temariobar{Sesion 1}{Sesion 2}{\textbf{Sesion 3}}{Sesion 4}
+\begin{itemize}\small
+  \item Random forest $=$ bagging $+$ aleatoriedad de features.
+  \item No requiere escalar variables; tolera bien features categoricas codificadas.
+  \item Captura no linealidades e interacciones \emph{sin} ingenieria manual.
+  \item Es un \key{baseline fuerte} para datos tabulares.
+  \item Aun asi: necesita validacion seria y vigilancia contra leakage.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Mini actividad}
+\small
+Mira la grafica de \texttt{train accuracy} y \texttt{test accuracy} contra \texttt{max\_depth} (Sesion 2). Identifica:
+\begin{itemize}\footnotesize
+  \item Zona de \emph{underfitting}.
+  \item Zona de \emph{sobreajuste}.
+  \item Profundidad razonable para frenar.
+\end{itemize}
+\end{block}
+\end{frame}
+
+% =========================================================
+\section[Interpretabilidad]{Sesion 4 — Interpretabilidad y entrega\label{sec:interp-w15}}
+% =========================================================
+
+\begin{frame}{Recap Sesion 3}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+Random forest funciona bien, pero internamente son \emph{cientos de arboles}. ?`Como entendemos lo que aprendio?
+
+\vspace{0.4em}
+\begin{block}{Pregunta para hoy}
+\small
+Si un modelo predice bien, ?`por que insistir en interpretar? Porque necesitamos saber:
+\begin{itemize}\footnotesize
+  \item Que \emph{senales} esta usando.
+  \item Si hay \term{leakage}.
+  \item Si los patrones aprendidos tienen sentido del negocio.
+  \item Si una variable importante es solo \emph{proxy} de otra.
+\end{itemize}
+\end{block}
+\end{frame}
+
+\subsection{Feature importance}
+
+\begin{frame}{Feature importance}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{block}{Definicion}
+\small
+\key{Feature importance:} medida que asigna a cada variable un puntaje de cuanto contribuyo al modelo.
+\end{block}
+
+\vspace{0.3em}
+Hay varias formas, y \emph{no son equivalentes}:
+\begin{itemize}\small
+  \item \key{Impurity-based importance:} cuanto reduce de impureza una variable, sumado sobre todos los splits y arboles.
+  \item \key{Permutation importance:} cuanto empeora el modelo si rompemos la relacion entre una feature y el target permutando esa columna.
+  \item \key{SHAP / valores de Shapley:} (mencion opcional) descomposicion local de la prediccion.
+\end{itemize}
+
+\vspace{0.25em}
+\key{Mensaje:} la importancia es una \emph{descripcion} del modelo, no una explicacion del fenomeno.
+\end{frame}
+
+\begin{frame}{Impurity-based importance}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{block}{Definicion}
+\small
+Para cada variable, sumamos la \key{reduccion de impureza} que causo cada split que la uso, ponderada por el tamano del nodo, y promediamos sobre todos los arboles.
+\end{block}
+
+\vspace{0.3em}
+Advertencias importantes:
+\begin{itemize}\small
+  \item Suele \key{favorecer variables con muchos posibles cortes} (numericas continuas, categoricas con muchas categorias).
+  \item Puede \key{repartir la importancia} entre variables correlacionadas, dejandolas a cada una con un puntaje pequeno y aparentemente debil.
+  \item Se calcula sobre el train: refleja como el modelo \emph{uso} las variables, no que tan utiles son fuera de muestra.
+\end{itemize}
+
+\vspace{0.2em}
+\key{Conclusion:} util como primer vistazo, pero no debe interpretarse como ranking ``oficial''.
+\end{frame}
+
+\begin{frame}{Permutation importance}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{block}{Definicion}
+\small
+\key{Permutation importance:} para una feature $j$, mide cuanto empeora el modelo cuando se \emph{rompe} su relacion con el target permutando aleatoriamente la columna $j$.
+\end{block}
+
+\vspace{0.3em}
+Procedimiento:
+\begin{enumerate}\small
+  \item Calcular desempeno base (por ejemplo accuracy o ROC-AUC en validacion).
+  \item Permutar la columna $j$ (otras columnas intactas).
+  \item Volver a calcular el desempeno.
+  \item Importancia $\approx$ caida promedio en el desempeno.
+\end{enumerate}
+
+\vspace{0.3em}
+Advertencia clave:
+\begin{itemize}\small
+  \item Si dos variables estan \emph{muy correlacionadas}, permutar una puede no empeorar el modelo, porque la otra todavia carga la misma informacion.
+  \item Esto puede hacer que ambas parezcan \emph{poco importantes}, aunque conjuntamente lo sean.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Comparacion: impurity vs permutation}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\centering
+\includegraphics[width=0.95\linewidth,height=0.65\textheight,keepaspectratio]{week15_feature_importance_comparison.png}
+
+\vspace{0.2em}
+{\footnotesize Mismo modelo, mismas features. Las dos medidas no coinciden exactamente: usar las dos da una mejor lectura que confiar en una sola.}
+\end{frame}
+
+\begin{frame}{Cuidado con el leakage}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{block}{Definicion}
+\small
+\key{Leakage:} cuando una feature contiene informacion que en el momento de la prediccion \emph{no estaria disponible}, o que codifica directa o indirectamente al target.
+\end{block}
+
+\vspace{0.3em}
+Ejemplo en riesgo de credito:
+\begin{itemize}\small
+  \item Feature: \texttt{monto\_pagado\_despues\_del\_default}.
+  \item Si esta variable aparece como \emph{muy importante} para predecir default $\Rightarrow$ hay leakage.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Senales sospechosas:}
+\begin{itemize}\footnotesize
+  \item Una sola feature concentra toda la importancia.
+  \item Test accuracy increiblemente alta para el problema.
+  \item Una feature ``rara'' aparece arriba sin justificacion del negocio.
+\end{itemize}
+\end{frame}
+
+\subsection{Partial dependence}
+
+\begin{frame}{Partial dependence plots (PDP)}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{block}{Definicion}
+\small
+\key{Partial dependence plot:} muestra como cambia la \emph{prediccion promedio} del modelo cuando variamos una feature, manteniendo las demas variables segun los valores observados en el dataset.
+\end{block}
+
+\vspace{0.3em}
+Sirve para:
+\begin{itemize}\small
+  \item Ver si el modelo aprendio una relacion monotona, en U, o sin tendencia clara.
+  \item Detectar relaciones no lineales que el modelo si capto pero que no son obvias en una tabla.
+\end{itemize}
+
+\vspace{0.3em}
+Advertencia importante:
+\begin{itemize}\small
+  \item Si las features estan muy correlacionadas, el PDP puede evaluar el modelo en \key{combinaciones poco realistas} (por ejemplo \emph{ingreso bajo $+$ deuda extremadamente alta}).
+  \item En esos casos la curva del PDP puede ser \emph{enganosa}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PDP — ejemplo}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\centering
+\includegraphics[width=0.95\linewidth,height=0.65\textheight,keepaspectratio]{week15_partial_dependence_example.png}
+
+\vspace{0.2em}
+{\footnotesize Como cambia la probabilidad promedio de default conforme aumenta cada variable, manteniendo las demas en su distribucion original.}
+\end{frame}
+
+\subsection{Mini caso didactico}
+
+\begin{frame}{Mini caso: riesgo de credito}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+Dataset sintetico (no es del libro; es \emph{didactico}):
+\begin{itemize}\small
+  \item \texttt{ingreso\_mensual}, \texttt{deuda\_mensual}.
+  \item \texttt{utilizacion\_credito} (correlacionada con deuda/ingreso).
+  \item \texttt{atrasos\_previos}.
+  \item \texttt{antiguedad\_laboral}.
+  \item \texttt{consultas\_recientes}.
+\end{itemize}
+
+\vspace{0.3em}
+Target: \texttt{default} $\in \{0,1\}$.
+
+\vspace{0.3em}
+Preguntas guia:
+\begin{itemize}\small
+  \item ?`Que modelo \emph{generaliza} mejor: LR, arbol unico, bagging, random forest?
+  \item ?`Random forest mejora la metrica de test sobre el arbol?
+  \item ?`Cuales variables aparecen como mas importantes? ?`Coinciden las dos medidas?
+  \item ?`Hay riesgo de leakage? ?`Que variables podrian ser \emph{proxy} de otras?
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Mini caso alternativo (opcional): F1 / fantasy}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+Target: \texttt{top10\_finish} $\in\{0,1\}$ para una carrera.
+
+\vspace{0.3em}
+Features posibles:
+\begin{itemize}\small
+  \item \texttt{posicion\_de\_salida}, \texttt{equipo}, \texttt{circuito}.
+  \item \texttt{puntos\_historicos}, \texttt{resultado\_anterior}.
+  \item \texttt{clima}, \texttt{experiencia\_piloto}.
+\end{itemize}
+
+\vspace{0.3em}
+Discusion clave:
+\begin{itemize}\small
+  \item Si \texttt{posicion\_de\_salida} es la feature mas importante, ?`eso \emph{causa} el resultado, o solo resume informacion sobre auto, piloto y equipo?
+\end{itemize}
+
+\vspace{0.3em}
+\key{Mensaje:} muchas variables son \term{proxies} de causas mas profundas.
+\end{frame}
+
+\subsection{Entregable}
+
+\begin{frame}{Entregable de la semana}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+Notebook \texttt{labs/week15/week15\_trees\_bagging\_rf.ipynb} con cuatro partes:
+\begin{enumerate}\small
+  \item \key{Arbol desde cero}: implementar \texttt{gini(y)}, \texttt{weighted\_gini(yL, yR)} y \texttt{best\_split(X, y)}; mostrar el split que elige en un dataset pequeno.
+  \item \key{Comparacion de modelos}: LogisticRegression, DecisionTree, Bagging, RandomForest. Reportar metrica train/test y comentar overfitting.
+  \item \key{Hiperparametros}: variar \texttt{max\_depth}, \texttt{min\_samples\_leaf}, \texttt{n\_estimators}, \texttt{max\_features}; al menos una grafica.
+  \item \key{Interpretabilidad}: calcular impurity-based y permutation importance, mas un PDP.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Entregable — preguntas guia}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+La reflexion del notebook debe responder con claridad:
+\begin{enumerate}\small
+  \item ?`Las dos importancias coinciden? Si no, ?`por que?
+  \item ?`Que variable parece mas importante?
+  \item ?`Hay riesgo de leakage?
+  \item ?`Alguna variable podria estar correlacionada con otra?
+  \item ?`Por que feature importance \textbf{no} implica causalidad?
+\end{enumerate}
+
+\vspace{0.4em}
+{\footnotesize La calidad de la reflexion vale tanto como las metricas.}
+\end{frame}
+
+\begin{frame}{Cierre de la semana}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+Ideas que deben quedar:
+\begin{itemize}\small
+  \item Un arbol divide el espacio de features mediante \key{reglas simples}.
+  \item Los arboles son flexibles, pero \key{sobreajustan} facilmente.
+  \item \key{Bagging} reduce varianza promediando modelos entrenados con bootstrap.
+  \item \key{Random forest} suma aleatoriedad de features y reduce la correlacion entre arboles.
+  \item Feature importance se interpreta \emph{con cautela}.
+  \item Un modelo que predice bien puede aun asi apoyarse en \key{senales problematicas}.
+  \item Random forest es un baseline fuerte, pero no sustituye una buena validacion.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Puente a Semana 16}
+\small
+La proxima semana veremos \key{boosting}: en vez de promediar modelos en paralelo, los entrenamos \emph{secuencialmente}, cada uno enfocandose en los errores del anterior. Es la otra gran familia de ensambles.
+\end{block}
+\end{frame}
+
+\begin{frame}{Lecturas recomendadas (Murphy, PML)}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{\textbf{Sesion 4}}
+\begin{itemize}\small
+  \item \key{Cap.~18 — Trees, Forests, Bagging and Boosting}
+  \begin{itemize}\footnotesize
+    \item \key{18.1} Classification and regression trees (CART).
+    \item \key{18.2} Ensemble learning.
+    \item \key{18.3} Bagging.
+    \item \key{18.4} Random forests.
+    \item \key{18.6} Interpreting tree ensembles.
+  \end{itemize}
+  \item \key{18.5} Boosting — \emph{lectura opcional} (puente a Semana 16).
+  \item Repaso util: Cap.~4 (bias y varianza), Cap.~5 (metricas y validacion).
+\end{itemize}
+\end{frame}
+
+% =========================================================
+\section[Apendice]{Apendice — Detalles\label{sec:apendice-w15}}
+% =========================================================
+
+\begin{frame}{Apendice — Calculo detallado de Gini}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+Definicion:
+\[
+\mathrm{Gini}(t) = 1 - \sum_{k=1}^K p_{k,t}^2.
+\]
+
+\vspace{0.2em}
+Para evaluar un split que parte el nodo $t$ en $t_L$ y $t_R$:
+\[
+\mathrm{Gini}_{\text{split}} = \frac{n_L}{n}\,\mathrm{Gini}(t_L) + \frac{n_R}{n}\,\mathrm{Gini}(t_R),
+\]
+con $n = n_L + n_R$.
+
+\vspace{0.2em}
+Ganancia:
+\[
+\Delta = \mathrm{Gini}(t) - \mathrm{Gini}_{\text{split}}.
+\]
+
+\vspace{0.3em}
+Ejemplo: nodo $(8, 2)$ se parte en $(5, 0)$ y $(3, 2)$.
+\begin{itemize}\footnotesize
+  \item $\mathrm{Gini}(t) = 1 - (0.8^2 + 0.2^2) = 0.32$.
+  \item $\mathrm{Gini}(t_L) = 0$, $\mathrm{Gini}(t_R) = 1 - (0.6^2 + 0.4^2) = 0.48$.
+  \item $\mathrm{Gini}_{\text{split}} = (5/10)(0) + (5/10)(0.48) = 0.24$.
+  \item $\Delta = 0.32 - 0.24 = 0.08$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Apendice — Prediccion del ensamble}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+Para regresion, prediccion del ensamble (Murphy 18.2):
+\[
+\hat f(x) = \frac{1}{B}\sum_{b=1}^{B} \hat f_b(x).
+\]
+
+\vspace{0.3em}
+Para clasificacion (\textit{soft voting} con probabilidades):
+\[
+\hat p(y=k\mid x) = \frac{1}{B}\sum_{b=1}^{B} \hat p_b(y=k\mid x),
+\qquad
+\hat y = \argmax_{k}\hat p(y=k\mid x).
+\]
+
+\vspace{0.3em}
+{\footnotesize Para \textit{hard voting}, cada arbol da una clase y se cuenta la moda. En la practica, soft voting suele dar mejor calibracion.}
+\end{frame}
+
+\begin{frame}{Apendice — Reduccion de varianza por promediado}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+Suponiendo $B$ predicciones $\hat f_b(x)$ con varianza $\sigma^2$ y \emph{correlacion por pares} $\rho$,
+\[
+\Var\!\left[\frac{1}{B}\sum_{b=1}^{B}\hat f_b(x)\right]
+= \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2.
+\]
+
+\vspace{0.3em}
+Lectura por casos:
+\begin{itemize}\small
+  \item Si $\rho = 0$ (modelos independientes): la varianza tiende a $0$ cuando $B\to\infty$.
+  \item Si $\rho$ es alto: por mas arboles que agreguemos, la varianza no baja de $\rho\sigma^2$.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Conclusion:} la diferencia entre bagging y random forest no es \emph{cuantos} arboles, sino \textbf{que tan correlacionados} estan. Por eso \texttt{max\_features} importa tanto.
+\end{frame}
+
+\begin{frame}{Apendice — Por que importance no implica causalidad}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+Una variable puede aparecer importante porque:
+\begin{itemize}\small
+  \item Tiene \emph{relacion estadistica} con $y$ (no necesariamente causal).
+  \item Es un \term{proxy} de la verdadera causa (que no esta en el dataset).
+  \item Se confunde con otra variable correlacionada.
+  \item Hay un \term{confounder} comun a ambas.
+  \item Existe leakage.
+\end{itemize}
+
+\vspace{0.4em}
+\begin{block}{Regla pedagogica}
+\small
+Decir ``$X$ es la causa de $Y$ porque salio importante en mi random forest'' es \textbf{incorrecto}. Lo correcto es: ``$X$ tiene una relacion predictiva con $Y$ \emph{en este dataset}''.
+\end{block}
+\end{frame}
+
+\begin{frame}{Apendice — Limitaciones de los PDPs}
+\temariobar{Sesion 1}{Sesion 2}{Sesion 3}{Sesion 4}
+Un PDP promedia la prediccion del modelo cuando movemos una feature, manteniendo las demas fijas a sus valores observados.
+
+\vspace{0.3em}
+Limitaciones:
+\begin{itemize}\small
+  \item Si dos features estan correlacionadas, el PDP \emph{evalua el modelo en zonas que casi no aparecen en los datos reales} (extrapolacion implicita).
+  \item Promedia interacciones: una relacion no lineal compleja puede aparecer ``aplanada'' en el PDP.
+  \item Para una vision local mas honesta, conviene complementar con \key{ICE plots} o valores SHAP.
+\end{itemize}
+
+\vspace{0.3em}
+\key{Lectura responsable:} un PDP es una \emph{aproximacion}; sirve para detectar tendencias generales, no para concluir el efecto exacto de una variable.
+\end{frame}
